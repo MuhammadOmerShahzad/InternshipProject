@@ -257,10 +257,186 @@ LEFT JOIN public.zones z ON u.zone_id = z.id
 LEFT JOIN public.branches b ON u.branch_id = b.id;
 
 -- =============================================
+-- 8. FILES TABLE (Module Documents)
+-- =============================================
+
+-- Files table (stores file metadata, actual files in Supabase Storage)
+CREATE TABLE IF NOT EXISTS public.files (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  
+  -- File metadata
+  filename TEXT NOT NULL,              -- Sanitized filename for storage
+  original_filename TEXT NOT NULL,     -- Original uploaded filename
+  file_type TEXT NOT NULL,             -- File extension (pdf, docx, etc.)
+  file_size BIGINT NOT NULL,           -- Size in bytes
+  storage_path TEXT NOT NULL UNIQUE,   -- Full path in Supabase Storage
+  
+  -- Module hierarchy (matches moduleConfig.ts slugs)
+  module_slug TEXT NOT NULL,           -- e.g., 'approvals', 'licenses'
+  submodule_slug TEXT NOT NULL,        -- e.g., 'dine-in', 'trade-licenses'
+  
+  -- Organization hierarchy
+  zone_id UUID NOT NULL REFERENCES public.zones(id) ON DELETE RESTRICT,
+  branch_id UUID NOT NULL REFERENCES public.branches(id) ON DELETE RESTRICT,
+  
+  -- Audit
+  uploaded_by UUID NOT NULL REFERENCES public.users(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Indexes for efficient querying
+CREATE INDEX IF NOT EXISTS idx_files_module ON public.files(module_slug, submodule_slug);
+CREATE INDEX IF NOT EXISTS idx_files_zone_branch ON public.files(zone_id, branch_id);
+CREATE INDEX IF NOT EXISTS idx_files_uploaded_by ON public.files(uploaded_by);
+CREATE INDEX IF NOT EXISTS idx_files_created_at ON public.files(created_at DESC);
+
+-- Enable RLS
+ALTER TABLE public.files ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies for files
+CREATE POLICY "files_read_authenticated" 
+  ON public.files 
+  FOR SELECT 
+  USING (auth.role() = 'authenticated');
+
+CREATE POLICY "files_insert_authenticated" 
+  ON public.files 
+  FOR INSERT 
+  WITH CHECK (auth.role() = 'authenticated');
+
+CREATE POLICY "admins_delete_files" 
+  ON public.files 
+  FOR DELETE 
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.users 
+      WHERE id = auth.uid() 
+      AND role = 'Admin'
+    )
+  );
+
+-- =============================================
+-- 9. ANNOUNCEMENTS TABLE
+-- =============================================
+
+-- Announcements table (for admin broadcasts to branches)
+CREATE TABLE IF NOT EXISTS public.announcements (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  
+  -- Announcement content
+  title TEXT NOT NULL,
+  message TEXT NOT NULL,
+  
+  -- Branch targeting (NULL = all branches, otherwise specific branches)
+  target_branches UUID[],
+  
+  -- Audit
+  created_by UUID NOT NULL REFERENCES public.users(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Indexes for performance
+CREATE INDEX IF NOT EXISTS idx_announcements_created_at ON public.announcements(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_announcements_branches ON public.announcements USING GIN(target_branches);
+
+-- Enable RLS
+ALTER TABLE public.announcements ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies for announcements
+-- Users can read announcements targeted to their branch or all branches
+CREATE POLICY "announcements_read_own_branch" 
+  ON public.announcements 
+  FOR SELECT 
+  USING (
+    target_branches IS NULL OR 
+    (SELECT branch_id FROM public.users WHERE id = auth.uid()) = ANY(target_branches)
+  );
+
+-- Only admins can create announcements
+CREATE POLICY "admins_create_announcements" 
+  ON public.announcements 
+  FOR INSERT 
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.users 
+      WHERE id = auth.uid() 
+      AND role = 'Admin'
+    )
+  );
+
+-- =============================================
+-- 10. TASKS TABLE
+-- =============================================
+
+-- Tasks table (for admin task assignments to branches)
+CREATE TABLE IF NOT EXISTS public.tasks (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  
+  -- Task content
+  title TEXT NOT NULL,
+  description TEXT,
+  
+  -- Branch targeting (NULL = all branches, otherwise specific branches)
+  target_branches UUID[],
+  
+  -- Status tracking
+  completed BOOLEAN DEFAULT FALSE,
+  
+  -- Audit
+  created_by UUID NOT NULL REFERENCES public.users(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Indexes for performance
+CREATE INDEX IF NOT EXISTS idx_tasks_created_at ON public.tasks(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_tasks_branches ON public.tasks USING GIN(target_branches);
+CREATE INDEX IF NOT EXISTS idx_tasks_completed ON public.tasks(completed);
+
+-- Enable RLS
+ALTER TABLE public.tasks ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies for tasks
+-- Users can read tasks targeted to their branch or all branches
+CREATE POLICY "tasks_read_own_branch" 
+  ON public.tasks 
+  FOR SELECT 
+  USING (
+    target_branches IS NULL OR 
+    (SELECT branch_id FROM public.users WHERE id = auth.uid()) = ANY(target_branches)
+  );
+
+-- Only admins can create tasks
+CREATE POLICY "admins_create_tasks" 
+  ON public.tasks 
+  FOR INSERT 
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.users 
+      WHERE id = auth.uid() 
+      AND role = 'Admin'
+    )
+  );
+
+-- Users can update completion status of tasks for their branch
+CREATE POLICY "users_update_own_tasks" 
+  ON public.tasks 
+  FOR UPDATE 
+  USING (
+    target_branches IS NULL OR 
+    (SELECT branch_id FROM public.users WHERE id = auth.uid()) = ANY(target_branches)
+  )
+  WITH CHECK (
+    target_branches IS NULL OR 
+    (SELECT branch_id FROM public.users WHERE id = auth.uid()) = ANY(target_branches)
+  );
+
+-- =============================================
 -- SETUP COMPLETE
 -- =============================================
 -- Next steps:
 -- 1. Create your first admin user via Supabase Auth
 -- 2. Insert corresponding profile in users table
 -- 3. Use the user actions in lib/actions/users.ts
+-- 4. Create 'module-files' storage bucket in Supabase Dashboard
 -- =============================================
+

@@ -1,14 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, Send, Loader2, Megaphone, Building2, CheckCircle2 } from 'lucide-react';
+import { X, Send, Loader2, ListTodo, Building2, CheckCircle2, Plus, Trash2 } from 'lucide-react';
 import { getAllBranches } from '@/lib/actions/zones';
-import { postAnnouncement } from '@/lib/actions/announcements';
+import { createTasks } from '@/lib/actions/tasks';
 
-interface AnnouncementFormProps {
+interface BranchTasksFormProps {
     onClose: () => void;
     user: { name: string };
-    onAnnouncementAdded?: (announcement: any) => void;
+    onTasksAdded?: () => void;
 }
 
 interface Branch {
@@ -16,9 +16,16 @@ interface Branch {
     name: string;
 }
 
-export default function AnnouncementForm({ onClose, user, onAnnouncementAdded }: AnnouncementFormProps) {
-    const [title, setTitle] = useState('');
-    const [message, setMessage] = useState('');
+interface TaskInput {
+    id: string;
+    title: string;
+    description: string;
+}
+
+export default function BranchTasksForm({ onClose, user, onTasksAdded }: BranchTasksFormProps) {
+    const [tasks, setTasks] = useState<TaskInput[]>([
+        { id: '1', title: '', description: '' }
+    ]);
     const [branches, setBranches] = useState<Branch[]>([]);
     const [selectedBranches, setSelectedBranches] = useState<string[]>([]);
     const [allBranchesSelected, setAllBranchesSelected] = useState(true);
@@ -36,6 +43,14 @@ export default function AnnouncementForm({ onClose, user, onAnnouncementAdded }:
         }
         loadBranches();
     }, []);
+
+    // Handle close with animation
+    const handleClose = () => {
+        setIsClosing(true);
+        setTimeout(() => {
+            onClose();
+        }, 200);
+    };
 
     // Handle all branches toggle
     const handleAllBranchesToggle = () => {
@@ -55,35 +70,48 @@ export default function AnnouncementForm({ onClose, user, onAnnouncementAdded }:
         }
     };
 
-    // Handle close with animation
-    const handleClose = () => {
-        setIsClosing(true);
-        setTimeout(() => {
-            onClose();
-        }, 200); // Match animation duration
+    // Add new task
+    const handleAddTask = () => {
+        if (tasks.length < 5) {
+            setTasks([...tasks, { id: Date.now().toString(), title: '', description: '' }]);
+        }
+    };
+
+    // Remove task
+    const handleRemoveTask = (taskId: string) => {
+        if (tasks.length > 1) {
+            setTasks(tasks.filter(t => t.id !== taskId));
+        }
+    };
+
+    // Update task
+    const handleTaskChange = (taskId: string, field: 'title' | 'description', value: string) => {
+        setTasks(tasks.map(t => t.id === taskId ? { ...t, [field]: value } : t));
     };
 
     // Handle form submission
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (!title.trim() || !message.trim()) {
-            alert('Please fill in both title and message');
+        // Validate tasks
+        const validTasks = tasks.filter(t => t.title.trim());
+        if (validTasks.length === 0) {
+            alert('Please add at least one task with a title');
             return;
         }
 
         setSubmitting(true);
 
         const targetBranches = allBranchesSelected ? null : selectedBranches;
-        const result = await postAnnouncement(title, message, targetBranches);
+        const result = await createTasks(validTasks, targetBranches);
 
         if (result.success) {
-            if (onAnnouncementAdded && result.announcement) {
-                onAnnouncementAdded(result.announcement);
+            if (onTasksAdded) {
+                onTasksAdded();
             }
             handleClose();
         } else {
-            alert(`Failed to post announcement: ${result.error}`);
+            alert(`Failed to create tasks: ${result.error}`);
         }
 
         setSubmitting(false);
@@ -106,11 +134,11 @@ export default function AnnouncementForm({ onClose, user, onAnnouncementAdded }:
                     <div className="flex items-center justify-between relative z-10">
                         <div className="flex items-center gap-3">
                             <div className="bg-white/20 p-2.5 rounded-xl backdrop-blur-sm">
-                                <Megaphone className="w-6 h-6 text-white" />
+                                <ListTodo className="w-6 h-6 text-white" />
                             </div>
                             <div>
-                                <h2 className="text-xl font-bold font-heading tracking-wide">New Announcement</h2>
-                                <p className="text-white/80 text-xs font-medium">Broadcast message to branches</p>
+                                <h2 className="text-xl font-bold font-heading tracking-wide">Assign Branch Tasks</h2>
+                                <p className="text-white/80 text-xs font-medium">Create up to 5 tasks for branches</p>
                             </div>
                         </div>
                         <button
@@ -125,36 +153,6 @@ export default function AnnouncementForm({ onClose, user, onAnnouncementAdded }:
                 {/* Form */}
                 <form onSubmit={handleSubmit} className="p-6 sm:p-8 space-y-6 max-h-[80vh] overflow-y-auto scrollbar-thin">
                     <div className="space-y-5">
-                        {/* Title Input */}
-                        <div className="group">
-                            <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 ml-1 group-focus-within:text-[#f15a22] transition-colors">
-                                Announcement Title
-                            </label>
-                            <input
-                                type="text"
-                                value={title}
-                                onChange={(e) => setTitle(e.target.value)}
-                                placeholder="E.g., Updated Holiday Schedule"
-                                className="w-full px-4 py-3.5 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 text-gray-900 dark:text-white placeholder:text-gray-400 focus:ring-2 focus:ring-[#f15a22] focus:ring-offset-2 dark:focus:ring-offset-gray-800 focus:bg-white dark:focus:bg-gray-700 focus:border-transparent outline-none transition-all duration-200 ease-out font-medium"
-                                required
-                            />
-                        </div>
-
-                        {/* Message Textarea */}
-                        <div className="group">
-                            <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 ml-1 group-focus-within:text-[#f15a22] transition-colors">
-                                Message Details
-                            </label>
-                            <textarea
-                                value={message}
-                                onChange={(e) => setMessage(e.target.value)}
-                                placeholder="Type your announcement details here..."
-                                rows={5}
-                                className="w-full px-4 py-3.5 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 text-gray-900 dark:text-white placeholder:text-gray-400 focus:ring-2 focus:ring-[#f15a22] focus:ring-offset-2 dark:focus:ring-offset-gray-800 focus:bg-white dark:focus:bg-gray-700 focus:border-transparent outline-none transition-all duration-200 ease-out font-medium resize-none shadow-sm"
-                                required
-                            />
-                        </div>
-
                         {/* Branch Selection */}
                         <div>
                             <div className="flex items-center justify-between mb-3 ml-1">
@@ -186,7 +184,7 @@ export default function AnnouncementForm({ onClose, user, onAnnouncementAdded }:
                                         <span className={`font-bold block ${allBranchesSelected ? 'text-[#f15a22]' : 'text-gray-700 dark:text-gray-300'}`}>
                                             All Branches
                                         </span>
-                                        <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Broadcast to entire network</span>
+                                        <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Assign to entire network</span>
                                     </div>
                                 </div>
                                 <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-200 ${allBranchesSelected ? 'border-[#f15a22] bg-[#f15a22]' : 'border-gray-300 dark:border-gray-500 bg-transparent'}`}>
@@ -203,9 +201,9 @@ export default function AnnouncementForm({ onClose, user, onAnnouncementAdded }:
                             {/* Individual Branches Grid */}
                             <div className={`
                                 mt-3 transition-all duration-500 ease-in-out overflow-hidden
-                                ${!allBranchesSelected ? 'max-h-80 opacity-100' : 'max-h-0 opacity-0'}
+                                ${!allBranchesSelected ? 'max-h-60 opacity-100' : 'max-h-0 opacity-0'}
                             `}>
-                                <div className="border border-gray-200 dark:border-gray-600 rounded-xl p-3 bg-gray-50/50 dark:bg-gray-800/50 max-h-60 overflow-y-auto scrollbar-thin">
+                                <div className="border border-gray-200 dark:border-gray-600 rounded-xl p-3 bg-gray-50/50 dark:bg-gray-800/50 max-h-48 overflow-y-auto scrollbar-thin">
                                     {loading ? (
                                         <div className="flex flex-col items-center justify-center py-8 text-[#f15a22]">
                                             <Loader2 className="w-8 h-8 animate-spin mb-2" />
@@ -252,6 +250,60 @@ export default function AnnouncementForm({ onClose, user, onAnnouncementAdded }:
                                 </div>
                             </div>
                         </div>
+
+                        {/* Tasks Input */}
+                        <div>
+                            <div className="flex items-center justify-between mb-3 ml-1">
+                                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300">
+                                    Tasks ({tasks.length}/5)
+                                </label>
+                                {tasks.length < 5 && (
+                                    <button
+                                        type="button"
+                                        onClick={handleAddTask}
+                                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#f15a22] hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-lg transition-colors"
+                                    >
+                                        <Plus className="w-4 h-4" />
+                                        Add Task
+                                    </button>
+                                )}
+                            </div>
+
+                            <div className="space-y-3">
+                                {tasks.map((task, index) => (
+                                    <div key={task.id} className="bg-gray-50 dark:bg-gray-700/30 rounded-xl p-4 border border-gray-200 dark:border-gray-600">
+                                        <div className="flex items-start gap-3">
+                                            <div className="flex-1 space-y-2">
+                                                <input
+                                                    type="text"
+                                                    value={task.title}
+                                                    onChange={(e) => handleTaskChange(task.id, 'title', e.target.value)}
+                                                    placeholder={`Task ${index + 1} title...`}
+                                                    className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder:text-gray-400 focus:ring-2 focus:ring-[#f15a22] focus:outline-none text-sm font-medium"
+                                                    required
+                                                />
+                                                <input
+                                                    type="text"
+                                                    value={task.description}
+                                                    onChange={(e) => handleTaskChange(task.id, 'description', e.target.value)}
+                                                    placeholder="Description (optional)..."
+                                                    className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder:text-gray-400 focus:ring-2 focus:ring-[#f15a22] focus:outline-none text-sm"
+                                                />
+                                            </div>
+                                            {tasks.length > 1 && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleRemoveTask(task.id)}
+                                                    className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
                     </div>
 
                     {/* Action Buttons */}
@@ -265,11 +317,11 @@ export default function AnnouncementForm({ onClose, user, onAnnouncementAdded }:
                         </button>
                         <button
                             type="submit"
-                            disabled={submitting || (!allBranchesSelected && selectedBranches.length === 0)}
+                            disabled={submitting || (!allBranchesSelected && selectedBranches.length === 0) || tasks.every(t => !t.title.trim())}
                             className={`
                                 flex-1 px-6 py-3.5 rounded-xl text-white font-bold tracking-wide shadow-lg transition-all duration-300
                                 flex items-center justify-center gap-2.5
-                                ${submitting || (!allBranchesSelected && selectedBranches.length === 0)
+                                ${submitting || (!allBranchesSelected && selectedBranches.length === 0) || tasks.every(t => !t.title.trim())
                                     ? 'bg-gray-300 dark:bg-gray-600 opacity-70 cursor-not-allowed shadow-none'
                                     : 'bg-gradient-to-r from-[#f15a22] to-[#ff6b35] hover:shadow-[#f15a22]/25 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98]'
                                 }
@@ -278,12 +330,12 @@ export default function AnnouncementForm({ onClose, user, onAnnouncementAdded }:
                             {submitting ? (
                                 <>
                                     <Loader2 className="w-5 h-5 animate-spin" />
-                                    <span>Posting...</span>
+                                    <span>Sending...</span>
                                 </>
                             ) : (
                                 <>
                                     <Send className="w-5 h-5" />
-                                    <span>Post Now</span>
+                                    <span>Send Tasks</span>
                                 </>
                             )}
                         </button>

@@ -1,6 +1,6 @@
 'use server';
 
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClient, createClient } from '@/lib/supabase/server';
 
 export interface User {
     id: string;
@@ -37,6 +37,70 @@ export interface UpdateUserInput {
     role?: string;
     zoneId?: string;
     branchId?: string;
+}
+
+/**
+ * Get current authenticated user with their profile data
+ * Uses service client to bypass RLS
+ */
+export async function getCurrentUser() {
+    // Use regular client to get auth session
+    const supabase = await createClient();
+
+    const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !authUser) {
+        console.log('[getCurrentUser] No authenticated user found');
+        return { user: null, error: authError?.message || 'Not authenticated' };
+    }
+
+    console.log('[getCurrentUser] Auth user found:', authUser.id, authUser.email);
+
+    // Use service client to fetch user profile (bypasses RLS)
+    const serviceClient = createServiceClient();
+
+    const { data: userData, error: userError } = await serviceClient
+        .from('users')
+        .select(`
+            *,
+            zones:zone_id(id, name, code),
+            branches:branch_id(id, name)
+        `)
+        .eq('id', authUser.id)
+        .single();
+
+    if (userError) {
+        console.error('[getCurrentUser] Error fetching user profile:', userError);
+        // Return basic user data from auth if profile fetch fails
+        return {
+            user: {
+                id: authUser.id,
+                email: authUser.email || '',
+                name: authUser.email?.split('@')[0] || 'User',
+                first_name: '',
+                last_name: '',
+                role: 'Admin',
+                zone_id: '',
+                branch_id: '',
+                zone_name: 'Default Zone',
+                branch_name: 'Default Branch',
+                registered_modules: [],
+                created_at: new Date().toISOString(),
+            },
+            error: null
+        };
+    }
+
+    console.log('[getCurrentUser] User profile fetched:', userData?.name, userData?.role);
+
+    return {
+        user: {
+            ...userData,
+            zone_name: userData?.zones?.name || 'N/A',
+            branch_name: userData?.branches?.name || 'N/A',
+        },
+        error: null
+    };
 }
 
 /**

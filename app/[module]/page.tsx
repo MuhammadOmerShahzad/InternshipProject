@@ -7,21 +7,7 @@ import Drawer from '@/components/layout/Drawer';
 import Banner from '@/components/dashboard/Banner';
 import SubModulesGrid from '@/components/modules/SubModulesGrid';
 import { getModuleBySlug } from '@/lib/config/moduleConfig';
-
-// Mock user data
-const mockUser = {
-    _id: '1',
-    name: 'Admin User',
-    email: 'admin@muawin.com',
-    role: 'Admin',
-    branch: 'Islamabad Branch',
-    zone: 'North Zone',
-    registeredModules: [
-        'Licenses_Trade Licenses',
-        'Approvals_Outer Spaces',
-        'Vehicles_Maintenance',
-    ],
-};
+import { useUser } from '@/lib/context/UserContext';
 
 interface ModulePageProps {
     params: Promise<{
@@ -30,6 +16,7 @@ interface ModulePageProps {
 }
 
 export default function ModuleMainPage({ params }: ModulePageProps) {
+    const { user, loading: userLoading } = useUser();
     const [resolvedParams, setResolvedParams] = useState<{ module: string } | null>(null);
     const [darkMode, setDarkMode] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
@@ -76,7 +63,7 @@ export default function ModuleMainPage({ params }: ModulePageProps) {
                 searchQuery={searchQuery}
                 onSearch={setSearchQuery}
                 searchResults={[]}
-                user={mockUser}
+                user={user}
                 mobileOpen={mobileOpen}
                 setMobileOpen={setMobileOpen}
                 desktopOpen={desktopOpen}
@@ -84,7 +71,7 @@ export default function ModuleMainPage({ params }: ModulePageProps) {
             />
 
             <Drawer
-                user={mockUser}
+                user={user}
                 mobileOpen={mobileOpen}
                 setMobileOpen={setMobileOpen}
                 desktopOpen={desktopOpen}
@@ -115,7 +102,7 @@ export default function ModuleMainPage({ params }: ModulePageProps) {
                         <SubModulesGrid
                             subModules={moduleConfig.subModules}
                             basePath={`/${moduleSlug}`}
-                            user={mockUser}
+                            user={user}
                         />
                     </div>
                 ) : (

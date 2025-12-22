@@ -14,30 +14,7 @@ import {
     isFilePage,
     generatePageTitle
 } from '@/lib/config/moduleConfig';
-
-// Mock user data - replace with actual authentication
-const mockUser = {
-    _id: '1',
-    name: 'Admin User',
-    email: 'admin@muawin.com',
-    role: 'Admin',
-    branch: 'Islamabad Branch',
-    zone: 'North Zone',
-    registeredModules: [
-        'Licenses_Trade Licenses',
-        'Licenses_Staff Medicals',
-        'Approvals_Outer Spaces',
-        'Vehicles_Maintenance',
-        'Vehicles_Token Taxes',
-        'Vehicles_Route Permits',
-        'Taxation_Marketing',
-        'Certificates_Electric Fitness Test',
-        'Security_Guard Training',
-        'HSE_Monthly Inspection',
-        'HSE_Training Status',
-        'HSE_Incidents',
-    ],
-};
+import { useUser } from '@/lib/context/UserContext';
 
 interface ModulePageProps {
     params: Promise<{
@@ -48,6 +25,7 @@ interface ModulePageProps {
 
 export default function ModuleCatchAllPage({ params }: ModulePageProps) {
     const router = useRouter();
+    const { user, loading: userLoading } = useUser();
     const [resolvedParams, setResolvedParams] = useState<{ module: string; slug?: string[] } | null>(null);
     const [darkMode, setDarkMode] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
@@ -95,7 +73,8 @@ export default function ModuleCatchAllPage({ params }: ModulePageProps) {
         }
 
         const title = generatePageTitle(moduleSlug, slug);
-        return <FilePageTemplate title={title} subModule={subModule} user={mockUser} />;
+        const submoduleSlug = slug[slug.length - 1]; // Last segment is the submodule
+        return <FilePageTemplate title={title} subModule={subModule} user={user} moduleSlug={moduleSlug} submoduleSlug={submoduleSlug} />;
     }
 
     // Otherwise, show the submodules grid
@@ -117,7 +96,7 @@ export default function ModuleCatchAllPage({ params }: ModulePageProps) {
                 searchQuery={searchQuery}
                 onSearch={setSearchQuery}
                 searchResults={[]}
-                user={mockUser}
+                user={user}
                 mobileOpen={mobileOpen}
                 setMobileOpen={setMobileOpen}
                 desktopOpen={desktopOpen}
@@ -125,7 +104,7 @@ export default function ModuleCatchAllPage({ params }: ModulePageProps) {
             />
 
             <Drawer
-                user={mockUser}
+                user={user}
                 mobileOpen={mobileOpen}
                 setMobileOpen={setMobileOpen}
                 desktopOpen={desktopOpen}
@@ -155,7 +134,7 @@ export default function ModuleCatchAllPage({ params }: ModulePageProps) {
                     <SubModulesGrid
                         subModules={subModules}
                         basePath={basePath}
-                        user={mockUser}
+                        user={user}
                     />
                 </div>
             </main>

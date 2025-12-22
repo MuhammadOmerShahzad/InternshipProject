@@ -9,18 +9,20 @@ import { SubModule } from '@/lib/config/moduleConfig';
 // Import shared components
 import { FileTable, AddFileButton, SearchBar, DeleteDialog } from '@/components/modules/shared';
 
+// Import server actions
+import { getZones, getBranchesByZone, Zone, Branch } from '@/lib/actions/zones';
+import { uploadFile, getFiles, deleteFile, getFileDownloadUrl, FileRecord } from '@/lib/actions/files';
+
 interface User {
-    _id: string;
+    id: string;
     name: string;
     email: string;
     role: string;
     branch: string;
     zone: string;
+    branch_id?: string;
+    zone_id?: string;
     registeredModules?: string[];
-}
-
-interface Zone {
-    zoneName: string;
 }
 
 interface FileData {
@@ -35,31 +37,12 @@ interface FileData {
 interface FilePageTemplateProps {
     title: string;
     subModule: SubModule;
-    user: User;
+    user: User | null;
+    moduleSlug: string;
+    submoduleSlug: string;
 }
 
-// Mock data
-const MOCK_ZONES: Zone[] = [
-    { zoneName: 'North Zone' },
-    { zoneName: 'South Zone' },
-    { zoneName: 'East Zone' },
-    { zoneName: 'West Zone' },
-];
-
-const MOCK_BRANCHES: Record<string, string[]> = {
-    'North Zone': ['Islamabad Branch', 'Rawalpindi Branch', 'Peshawar Branch'],
-    'South Zone': ['Karachi Branch', 'Hyderabad Branch'],
-    'East Zone': ['Lahore Branch', 'Faisalabad Branch', 'Multan Branch'],
-    'West Zone': ['Quetta Branch', 'Gwadar Branch'],
-};
-
-const MOCK_FILES: FileData[] = [
-    { fileId: '1', filename: 'Document_2024_001.pdf', lastModified: new Date().toISOString(), fileNumber: '00001' },
-    { fileId: '2', filename: 'Certificate_Renewal.pdf', lastModified: new Date().toISOString(), fileNumber: '00002' },
-    { fileId: '3', filename: 'Permit_Application.docx', lastModified: new Date().toISOString(), fileNumber: '00003' },
-];
-
-export default function FilePageTemplate({ title, subModule, user }: FilePageTemplateProps) {
+export default function FilePageTemplate({ title, subModule, user, moduleSlug, submoduleSlug }: FilePageTemplateProps) {
     // Layout state
     const [darkMode, setDarkMode] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
@@ -69,16 +52,17 @@ export default function FilePageTemplate({ title, subModule, user }: FilePageTem
 
     // Data state
     const [zones, setZones] = useState<Zone[]>([]);
-    const [branches, setBranches] = useState<string[]>([]);
-    const [selectedZone, setSelectedZone] = useState('');
-    const [selectedBranch, setSelectedBranch] = useState('');
+    const [branches, setBranches] = useState<Branch[]>([]);
+    const [selectedZoneId, setSelectedZoneId] = useState('');
+    const [selectedBranchId, setSelectedBranchId] = useState('');
     const [files, setFiles] = useState<FileData[]>([]);
     const [loading, setLoading] = useState(false);
+    const [uploading, setUploading] = useState(false);
     const [fileSearchQuery, setFileSearchQuery] = useState('');
 
     // Dialog state
     const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
-    const [fileToDelete, setFileToDelete] = useState<string | null>(null);
+    const [fileToDelete, setFileToDelete] = useState<{ id: string; filename: string } | null>(null);
 
     // Snackbar state
     const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; type: 'success' | 'error' | 'info' }>({
@@ -95,46 +79,74 @@ export default function FilePageTemplate({ title, subModule, user }: FilePageTem
         return () => window.removeEventListener('resize', checkMobile);
     }, []);
 
-    // Initialize zones
+    // Initialize zones from database
     useEffect(() => {
-        setZones(MOCK_ZONES);
+        async function loadZones() {
+            const { zones: zoneData } = await getZones();
+            setZones(zoneData);
+        }
+        loadZones();
     }, []);
 
-    // Snackbar helper - must be defined before hooks that use it
+    // Snackbar helper
     const showSnackbar = useCallback((message: string, type: 'success' | 'error' | 'info') => {
         setSnackbar({ open: true, message, type });
         setTimeout(() => setSnackbar(prev => ({ ...prev, open: false })), 3000);
     }, []);
 
-    // Fetch files (mock implementation) - must be defined before hooks that use it
+    // Fetch files from database
     const fetchFiles = useCallback(async () => {
+        if (!selectedZoneId || !selectedBranchId) return;
+
         setLoading(true);
-        await new Promise(resolve => setTimeout(resolve, 500));
-        // In production: fetch(`/api/files/${subModule.apiEndpoint}/${zone}/${branch}`)
-        setFiles(MOCK_FILES);
+        const { files: fileData, error } = await getFiles(
+            moduleSlug,
+            submoduleSlug,
+            selectedZoneId,
+            selectedBranchId
+        );
+
+        if (error) {
+            showSnackbar(`Error loading files: ${error}`, 'error');
+        } else {
+            // Transform FileRecord to FileData format
+            const transformedFiles: FileData[] = fileData.map((file: FileRecord, index: number) => ({
+                fileId: file.id,
+                filename: file.original_filename,
+                filetype: file.file_type,
+                lastModified: file.created_at,
+                fileNumber: String(index + 1).padStart(5, '0'),
+            }));
+            setFiles(transformedFiles);
+        }
         setLoading(false);
-    }, []);
+    }, [selectedZoneId, selectedBranchId, moduleSlug, submoduleSlug, showSnackbar]);
 
     // Fetch branches when zone changes
     useEffect(() => {
-        if (selectedZone) {
-            setBranches(MOCK_BRANCHES[selectedZone] || []);
-            setSelectedBranch('');
+        async function loadBranches() {
+            if (selectedZoneId) {
+                const { branches: branchData } = await getBranchesByZone(selectedZoneId);
+                setBranches(branchData);
+                setSelectedBranchId('');
+                setFiles([]);
+            }
         }
-    }, [selectedZone]);
+        loadBranches();
+    }, [selectedZoneId]);
 
     // Fetch files when zone and branch are selected
     useEffect(() => {
-        if (selectedZone && selectedBranch) {
+        if (selectedZoneId && selectedBranchId) {
             fetchFiles();
         }
-    }, [selectedZone, selectedBranch, fetchFiles]);
+    }, [selectedZoneId, selectedBranchId, fetchFiles]);
 
     // For non-admin users, auto-select their zone and branch
     useEffect(() => {
-        if (user.role !== 'Admin') {
-            setSelectedZone(user.zone);
-            setSelectedBranch(user.branch);
+        if (user && user.role !== 'Admin' && user.zone_id && user.branch_id) {
+            setSelectedZoneId(user.zone_id);
+            setSelectedBranchId(user.branch_id);
         }
     }, [user]);
 
@@ -148,39 +160,95 @@ export default function FilePageTemplate({ title, subModule, user }: FilePageTem
 
     // Handle file upload
     const handleFileSelect = useCallback(async (selectedFiles: File[] | File) => {
-        const filesArray = Array.isArray(selectedFiles) ? selectedFiles : [selectedFiles];
+        if (!selectedZoneId || !selectedBranchId) {
+            showSnackbar('Please select a zone and branch first', 'error');
+            return;
+        }
 
+        const filesArray = Array.isArray(selectedFiles) ? selectedFiles : [selectedFiles];
+        setUploading(true);
+
+        // Add optimistic files
         const optimisticFiles: FileData[] = filesArray.map((file, index) => ({
-            filename: file.name.replace(/\s+/g, '_'),
+            filename: file.name,
             lastModified: new Date().toISOString(),
             fileNumber: String(files.length + index + 1).padStart(5, '0'),
             fileId: `temp-${Date.now()}-${index}`,
             isOptimistic: true,
         }));
+        setFiles(prev => [...optimisticFiles, ...prev]);
 
-        setFiles(prev => [...prev, ...optimisticFiles]);
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        setFiles(prev => prev.map(f => f.isOptimistic ? { ...f, isOptimistic: false } : f));
-        showSnackbar(`Successfully uploaded ${filesArray.length} file(s)`, 'success');
-    }, [files.length, showSnackbar]);
+        let successCount = 0;
+        let errorCount = 0;
 
-    // Handle file view
-    const handleViewFile = useCallback((filename: string) => {
-        showSnackbar(`Downloading ${filename}...`, 'info');
-    }, [showSnackbar]);
+        for (const file of filesArray) {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('moduleSlug', moduleSlug);
+            formData.append('submoduleSlug', submoduleSlug);
+            formData.append('zoneId', selectedZoneId);
+            formData.append('branchId', selectedBranchId);
+
+            const result = await uploadFile(formData);
+            if (result.success) {
+                successCount++;
+            } else {
+                errorCount++;
+                console.error('Upload error:', result.error);
+            }
+        }
+
+        // Refresh files after upload
+        await fetchFiles();
+        setUploading(false);
+
+        if (successCount > 0) {
+            showSnackbar(`Successfully uploaded ${successCount} file(s)`, 'success');
+        }
+        if (errorCount > 0) {
+            showSnackbar(`Failed to upload ${errorCount} file(s)`, 'error');
+        }
+    }, [files.length, selectedZoneId, selectedBranchId, moduleSlug, submoduleSlug, fetchFiles, showSnackbar]);
+
+    // Handle file view/download
+    const handleViewFile = useCallback(async (filename: string) => {
+        const file = files.find(f => f.filename === filename);
+        if (!file?.fileId || file.fileId.startsWith('temp-')) {
+            showSnackbar('File is still uploading...', 'info');
+            return;
+        }
+
+        const { url, error } = await getFileDownloadUrl(file.fileId);
+        if (error) {
+            showSnackbar(`Error: ${error}`, 'error');
+            return;
+        }
+        if (url) {
+            window.open(url, '_blank');
+        }
+    }, [files, showSnackbar]);
 
     // Handle delete
     const openDeleteDialog = useCallback((filename: string) => {
-        setFileToDelete(filename);
-        setConfirmDeleteOpen(true);
-    }, []);
+        const file = files.find(f => f.filename === filename);
+        if (file?.fileId) {
+            setFileToDelete({ id: file.fileId, filename });
+            setConfirmDeleteOpen(true);
+        }
+    }, [files]);
 
     const handleDeleteConfirm = useCallback(async () => {
         if (!fileToDelete) return;
+
         setConfirmDeleteOpen(false);
-        setFiles(prev => prev.filter(f => f.filename !== fileToDelete));
-        await new Promise(resolve => setTimeout(resolve, 500));
-        showSnackbar(`File deleted successfully`, 'success');
+        const result = await deleteFile(fileToDelete.id);
+
+        if (result.success) {
+            setFiles(prev => prev.filter(f => f.fileId !== fileToDelete.id));
+            showSnackbar('File deleted successfully', 'success');
+        } else {
+            showSnackbar(`Delete failed: ${result.error}`, 'error');
+        }
         setFileToDelete(null);
     }, [fileToDelete, showSnackbar]);
 
@@ -190,13 +258,13 @@ export default function FilePageTemplate({ title, subModule, user }: FilePageTem
     }, []);
 
     const handleRefresh = useCallback(() => {
-        if (selectedZone && selectedBranch) {
+        if (selectedZoneId && selectedBranchId) {
             showSnackbar('Refreshing files...', 'info');
             fetchFiles();
         } else {
             showSnackbar('Please select a zone and branch first', 'error');
         }
-    }, [selectedZone, selectedBranch, fetchFiles, showSnackbar]);
+    }, [selectedZoneId, selectedBranchId, fetchFiles, showSnackbar]);
 
     return (
         <>
@@ -238,39 +306,39 @@ export default function FilePageTemplate({ title, subModule, user }: FilePageTem
 
                 {/* User Branch Info */}
                 <p className="text-center text-gray-600 dark:text-gray-400 mb-6">
-                    Your Branch: <span className="font-medium">{user.branch}</span>
+                    Your Branch: <span className="font-medium">{user?.branch || 'N/A'}</span>
                 </p>
 
                 {/* Controls Container */}
                 <div className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 shadow-lg">
                     {/* Admin Controls */}
-                    {user.role === 'Admin' && (
+                    {user?.role === 'Admin' && (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                             {/* Zone Select */}
                             <select
-                                value={selectedZone}
-                                onChange={(e) => setSelectedZone(e.target.value)}
+                                value={selectedZoneId}
+                                onChange={(e) => setSelectedZoneId(e.target.value)}
                                 className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#f15a22] focus:outline-none"
                             >
                                 <option value="" disabled>Select Zone</option>
                                 {zones.map((zone) => (
-                                    <option key={zone.zoneName} value={zone.zoneName}>
-                                        {zone.zoneName}
+                                    <option key={zone.id} value={zone.id}>
+                                        {zone.name}
                                     </option>
                                 ))}
                             </select>
 
                             {/* Branch Select */}
                             <select
-                                value={selectedBranch}
-                                onChange={(e) => setSelectedBranch(e.target.value)}
-                                disabled={!selectedZone}
+                                value={selectedBranchId}
+                                onChange={(e) => setSelectedBranchId(e.target.value)}
+                                disabled={!selectedZoneId}
                                 className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#f15a22] focus:outline-none disabled:opacity-50"
                             >
                                 <option value="" disabled>Select Branch</option>
                                 {branches.map((branch) => (
-                                    <option key={branch} value={branch}>
-                                        {branch}
+                                    <option key={branch.id} value={branch.id}>
+                                        {branch.name}
                                     </option>
                                 ))}
                             </select>
@@ -283,7 +351,11 @@ export default function FilePageTemplate({ title, subModule, user }: FilePageTem
 
                             {/* Action Buttons */}
                             <div className="flex items-center gap-2 justify-end">
-                                <AddFileButton onFileSelect={handleFileSelect} multiple disabled={!selectedBranch} />
+                                <AddFileButton
+                                    onFileSelect={handleFileSelect}
+                                    multiple
+                                    disabled={!selectedBranchId || uploading}
+                                />
                                 <button
                                     onClick={handleRefresh}
                                     disabled={loading}
@@ -296,7 +368,7 @@ export default function FilePageTemplate({ title, subModule, user }: FilePageTem
                     )}
 
                     {/* Non-Admin Controls */}
-                    {user.role !== 'Admin' && (
+                    {user?.role !== 'Admin' && (
                         <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
                             <div className="sm:col-span-3">
                                 <SearchBar searchQuery={fileSearchQuery} setSearchQuery={setFileSearchQuery} />
@@ -322,7 +394,7 @@ export default function FilePageTemplate({ title, subModule, user }: FilePageTem
                             </div>
                         ) : files.length === 0 ? (
                             <p className="text-center text-gray-500 dark:text-gray-400 py-12">
-                                {selectedZone && selectedBranch ? 'No files stored' : 'Select a zone and branch to view files'}
+                                {selectedZoneId && selectedBranchId ? 'No files stored' : 'Select a zone and branch to view files'}
                             </p>
                         ) : (
                             <FileTable
@@ -339,7 +411,7 @@ export default function FilePageTemplate({ title, subModule, user }: FilePageTem
                 {/* Delete Dialog */}
                 <DeleteDialog
                     isOpen={confirmDeleteOpen}
-                    filename={fileToDelete}
+                    filename={fileToDelete?.filename || null}
                     onConfirm={handleDeleteConfirm}
                     onCancel={handleDeleteCancel}
                 />

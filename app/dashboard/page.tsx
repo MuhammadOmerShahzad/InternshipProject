@@ -10,6 +10,7 @@ import Banner from '@/components/dashboard/Banner';
 import TileGrid from '@/components/dashboard/TileGrid';
 import Tabs from '@/components/dashboard/Tabs';
 import AnnouncementForm from '@/components/dashboard/AnnouncementForm';
+import BranchTasksForm from '@/components/dashboard/BranchTasksForm';
 
 // Default modules for users without explicit permissions
 const DEFAULT_MODULES = [
@@ -30,6 +31,7 @@ export default function DashboardPage() {
     const { user, loading: userLoading } = useUser();
 
     const [showAnnouncementForm, setShowAnnouncementForm] = useState(false);
+    const [showTasksForm, setShowTasksForm] = useState(false);
     const [latestAnnouncement, setLatestAnnouncement] = useState(null);
     const [refreshTrigger, setRefreshTrigger] = useState(0);
     const [hoveredButton, setHoveredButton] = useState<string | null>(null);
@@ -197,7 +199,7 @@ export default function DashboardPage() {
                                 <button
                                     onMouseEnter={() => setHoveredButton('task')}
                                     onMouseLeave={() => setHoveredButton(null)}
-                                    onClick={() => router.push('/branch-tasks')}
+                                    onClick={() => setShowTasksForm(true)}
                                     className={`
                     w-full sm:w-[48%] h-[60px] rounded-2xl
                     bg-gradient-to-br from-[#f15a22] to-[#ff6b35]
@@ -237,6 +239,7 @@ export default function DashboardPage() {
                                 userId={user?.id || ''}
                                 userZone={user?.zone || ''}
                                 userBranch={user?.branch || ''}
+                                userBranchId={user?.branch_id || ''}
                                 userEmail={user?.email || ''}
                                 refreshTrigger={refreshTrigger}
                             />
@@ -250,6 +253,15 @@ export default function DashboardPage() {
                         onClose={() => setShowAnnouncementForm(false)}
                         user={{ name: user.name }}
                         onAnnouncementAdded={handleAnnouncementAdded}
+                    />
+                )}
+
+                {/* Branch Tasks Form Modal */}
+                {showTasksForm && user && (
+                    <BranchTasksForm
+                        onClose={() => setShowTasksForm(false)}
+                        user={{ name: user.name }}
+                        onTasksAdded={() => setRefreshTrigger(prev => prev + 1)}
                     />
                 )}
             </main>

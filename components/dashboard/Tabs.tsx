@@ -2,13 +2,15 @@
 
 import { useState, useEffect } from 'react';
 import TodoList from './TodoList';
+import { getLatestAnnouncement } from '@/lib/actions/announcements';
 
 interface Announcement {
-    _id: string;
-    announcement: string;
-    announcementDetails: string;
-    createdAt: string;
-    createdBy: string;
+    id: string;
+    title: string;
+    message: string;
+    created_at: string;
+    created_by: string;
+    creator_name?: string;
 }
 
 interface TabComponentProps {
@@ -16,6 +18,7 @@ interface TabComponentProps {
     userId?: string;
     userZone?: string;
     userBranch?: string;
+    userBranchId?: string;
     userEmail?: string;
     refreshTrigger?: number;
 }
@@ -25,31 +28,29 @@ export default function TabComponent({
     userId,
     userZone,
     userBranch,
+    userBranchId,
     userEmail,
     refreshTrigger,
 }: TabComponentProps) {
     const [activeTab, setActiveTab] = useState(0);
     const [announcement, setAnnouncement] = useState<Announcement | null>(null);
     const [isHovered, setIsHovered] = useState(false);
+    const [loading, setLoading] = useState(false);
 
     useEffect(() => {
         if (latestAnnouncement) {
             setAnnouncement(latestAnnouncement);
-        } else {
-            // Fetch latest announcement
+        } else if (userBranchId) {
+            // Fetch latest announcement for user's branch
             const fetchAnnouncement = async () => {
-                try {
-                    // TODO: Replace with actual API endpoint
-                    // const response = await fetch('/api/announcements/latest');
-                    // const data = await response.json();
-                    // setAnnouncement(data);
-                } catch (error) {
-                    console.error('Error fetching announcement:', error);
-                }
+                setLoading(true);
+                const { announcement: fetchedAnnouncement } = await getLatestAnnouncement(userBranchId);
+                setAnnouncement(fetchedAnnouncement);
+                setLoading(false);
             };
             fetchAnnouncement();
         }
-    }, [latestAnnouncement, refreshTrigger]);
+    }, [latestAnnouncement, userBranchId, refreshTrigger]);
 
     return (
         <div
@@ -80,7 +81,6 @@ export default function TabComponent({
               flex items-center justify-center gap-2
               transition-all duration-300 relative
               hover:bg-[rgba(241,90,34,0.05)] dark:hover:bg-[rgba(241,90,34,0.1)]
-              hover:-translate-y-[1px]
               ${activeTab === 0 ? 'text-[#f15a22] font-bold' : ''}
             `}
                     >
@@ -100,7 +100,6 @@ export default function TabComponent({
               flex items-center justify-center gap-2
               transition-all duration-300 relative
               hover:bg-[rgba(241,90,34,0.05)] dark:hover:bg-[rgba(241,90,34,0.1)]
-              hover:-translate-y-[1px]
               ${activeTab === 1 ? 'text-[#f15a22] font-bold' : ''}
             `}
                     >
@@ -118,21 +117,25 @@ export default function TabComponent({
             {/* Tab Content */}
             <div className="p-3 pt-2 h-[280px] overflow-y-auto bg-white dark:bg-[#1a1a1a] relative z-10 scrollbar-thin scrollbar-thumb-[#f15a22] scrollbar-track-[#f1f1f1] dark:scrollbar-track-[#333]">
                 {activeTab === 0 && (
-                    <div className="p-3 text-left bg-[#f8f9fa] dark:bg-[#2a2a2a] rounded-2xl h-full w-full border border-[#e0e0e0] dark:border-[#333] transition-all duration-300 hover:shadow-md hover:-translate-y-[1px]">
-                        {announcement ? (
+                    <div className="p-3 text-left bg-[#f8f9fa] dark:bg-[#2a2a2a] rounded-2xl h-full w-full border border-[#e0e0e0] dark:border-[#333] transition-all duration-300 hover:shadow-md">
+                        {loading ? (
+                            <div className="flex items-center justify-center h-full">
+                                <div className="animate-spin w-8 h-8 border-4 border-[#f15a22] border-t-transparent rounded-full" />
+                            </div>
+                        ) : announcement ? (
                             <>
                                 <h2 className="font-bold text-[#f15a22] mb-2 text-lg sm:text-xl">
-                                    📢 {announcement.announcement}
+                                    📢 {announcement.title}
                                 </h2>
                                 <p className="mt-1 leading-relaxed text-[#333] dark:text-[#e0e0e0] text-sm sm:text-base">
-                                    {announcement.announcementDetails}
+                                    {announcement.message}
                                 </p>
                                 <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-center w-full px-4">
                                     <p className="text-[#666] text-xs mb-0.5">
-                                        📅 {new Date(announcement.createdAt).toLocaleDateString()}
+                                        📅 {new Date(announcement.created_at).toLocaleDateString()}
                                     </p>
                                     <p className="text-[#666] text-xs">
-                                        👤 Posted by Admin
+                                        👤 Posted by {announcement.creator_name || 'Admin'}
                                     </p>
                                 </div>
                             </>
@@ -153,7 +156,9 @@ export default function TabComponent({
                         userId={userId}
                         userZone={userZone}
                         userBranch={userBranch}
+                        userBranchId={userBranchId}
                         userEmail={userEmail}
+                        refreshTrigger={refreshTrigger}
                     />
                 )}
             </div>

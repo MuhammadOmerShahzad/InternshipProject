@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronDown, ChevronRight, Folder, FileText } from 'lucide-react';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 import { SubModule } from '@/lib/config/moduleConfig';
 
 interface User {
@@ -69,14 +69,14 @@ export default function SubModulesGrid({ subModules, basePath, user }: SubModule
                             {/* Module Header */}
                             <div className="flex flex-col items-center w-full text-center mb-2">
                                 <div className="relative w-10 h-10 mb-2 flex items-center justify-center">
-                                    {hasChildren ? (
-                                        <Folder className="w-8 h-8 text-[#f15a22]" />
-                                    ) : (
-                                        <FileText className="w-8 h-8 text-[#f15a22]" />
-                                    )}
+                                    <img
+                                        src="/images/folder.webp"
+                                        alt="folder"
+                                        className="w-8 h-8 object-contain"
+                                    />
                                 </div>
                                 <span
-                                    className="text-sm font-bold text-black dark:text-white text-center"
+                                    className="text-base font-bold text-black dark:text-white text-center"
                                     style={{ fontFamily: 'var(--font-body)' }}
                                 >
                                     {subModule.name}
