@@ -88,25 +88,27 @@ export default function SubModulesGrid({ subModules, basePath, user }: SubModule
                                 )}
                             </div>
 
-                            {/* Children */}
-                            {isExpanded && hasChildren && (
+                            {/* Children - always mounted, animated via opacity */}
+                            {hasChildren && (
                                 <div
                                     className={`
-                    mt-2 flex flex-col items-center w-full
-                    ${(subModule.children?.length || 0) > 5 ? 'max-h-[200px] overflow-y-auto' : ''}
-                  `}
+                                        mt-2 flex flex-col items-center w-full
+                                        transition-all duration-300 ease-in-out
+                                        ${isExpanded ? 'opacity-100 max-h-[250px]' : 'opacity-0 max-h-0 overflow-hidden'}
+                                        ${(subModule.children?.length || 0) > 5 ? 'overflow-y-auto' : ''}
+                                    `}
                                 >
                                     {subModule.children?.map((child) => (
                                         <button
                                             key={child.slug}
                                             onClick={(e) => handleChildClick(e, subModule, child)}
                                             className="
-                        w-full py-2 px-3 text-left text-sm
-                        text-gray-700 dark:text-gray-200
-                        hover:bg-gray-100 dark:hover:bg-gray-700
-                        transition-colors rounded-lg
-                        flex items-center gap-2
-                      "
+                                                w-full py-2 px-3 text-left text-sm
+                                                text-gray-700 dark:text-gray-200
+                                                hover:bg-gray-100 dark:hover:bg-gray-700
+                                                transition-colors rounded-lg
+                                                flex items-center gap-2
+                                            "
                                         >
                                             <ChevronRight className="w-4 h-4 text-[#f15a22]" />
                                             {child.name}

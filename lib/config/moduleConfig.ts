@@ -265,6 +265,17 @@ export const MODULES: ModuleConfig[] = [
         icon: '/images/rental_agreements.webp',
         subModules: [], // Direct page - no submodules
     },
+
+    // ============================================
+    // USER MANAGEMENT
+    // ============================================
+    {
+        name: 'User Management',
+        slug: 'user-management',
+        displayName: 'User Management',
+        icon: '/images/settings.webp',
+        subModules: [], // Direct page - no submodules
+    },
 ];
 
 // ============================================

@@ -128,6 +128,9 @@ CREATE TABLE IF NOT EXISTS public.users (
   -- Module Permissions (array of module names user has access to)
   registered_modules TEXT[] DEFAULT '{}',
   
+  -- Password for admin reference (stored when user is created/reset)
+  plain_password TEXT,
+  
   -- Timestamps
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()

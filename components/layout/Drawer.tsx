@@ -340,13 +340,15 @@ export default function DrawerComponent({
                 </div>
             </div>
 
-            {/* Backdrop */}
-            {desktopOpen && (
-                <div
-                    className="fixed inset-0 z-20 bg-black/30"
-                    onClick={handleBackdropClick}
-                />
-            )}
+            {/* Backdrop with smooth fade */}
+            <div
+                className={`
+                    fixed inset-0 z-20 bg-black/30
+                    transition-opacity duration-200
+                    ${desktopOpen ? 'opacity-100 ease-out' : 'opacity-0 pointer-events-none ease-in'}
+                `}
+                onClick={handleBackdropClick}
+            />
         </>
     );
 }
