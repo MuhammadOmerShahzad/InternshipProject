@@ -1,14 +1,41 @@
 @import "tailwindcss";
 
+/* Custom Fonts */
+@font-face {
+  font-family: 'TanseekModernW20';
+  src: url('/fonts/TanseekModernW20-Bold.ttf') format('truetype');
+  font-weight: bold;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Encode Sans';
+  src: url('/fonts/EncodeSansCompressed-600-SemiBold.ttf') format('truetype');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Encode Sans';
+  src: url('/fonts/EncodeSansCompressed-700-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --font-heading: 'TanseekModernW20', system-ui, -apple-system, sans-serif;
+  --font-body: 'Encode Sans', system-ui, -apple-system, sans-serif;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-body);
   --font-mono: var(--font-geist-mono);
 }
 
@@ -22,5 +49,117 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-body);
+}
+
+/* Custom Dashboard Animations */
+@keyframes pulse-custom {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(241, 90, 34, 0.7);
+  }
+
+  70% {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 10px rgba(241, 90, 34, 0);
+  }
+
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(241, 90, 34, 0);
+  }
+}
+
+@keyframes slideIn {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes bounce-custom {
+
+  0%,
+  20%,
+  53%,
+  80%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+
+  40%,
+  43% {
+    transform: translate3d(0, -8px, 0);
+  }
+
+  70% {
+    transform: translate3d(0, -4px, 0);
+  }
+
+  90% {
+    transform: translate3d(0, -2px, 0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+/* Custom scrollbar styles */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 8px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: #888;
+  border-radius: 10px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background-color: #555;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background-color: #f1f1f1;
+  border-radius: 10px;
+}
+
+.dark .scrollbar-thin::-webkit-scrollbar-track {
+  background-color: #333;
+}
+
+.scrollbar-thumb-\[\#f15a22\]::-webkit-scrollbar-thumb {
+  background-color: #f15a22;
+}
+
+.scrollbar-thumb-\[\#f15a22\]::-webkit-scrollbar-thumb:hover {
+  background-color: #d14e1f;
+}
+
+/* Animation utility classes */
+.animate-pulse-custom {
+  animation: pulse-custom 2s infinite;
+}
+
+.animate-slideIn {
+  animation: slideIn 0.6s ease-out;
+}
+
+.animate-bounce-custom {
+  animation: bounce-custom 1s infinite;
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-in;
 }
