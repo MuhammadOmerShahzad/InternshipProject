@@ -8,7 +8,7 @@ interface SearchBarProps {
     placeholder?: string;
 }
 
-export default function SearchBar({
+export default function FileSearchBar({
     searchQuery,
     setSearchQuery,
     placeholder = 'Search files...'

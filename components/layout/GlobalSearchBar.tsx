@@ -16,7 +16,7 @@ interface SearchBarProps {
     fullWidth?: boolean;
 }
 
-export default function SearchBar({
+export default function GlobalSearchBar({
     searchQuery = '',
     onSearch = () => { },
     searchResults = [],
@@ -118,8 +118,8 @@ export default function SearchBar({
                                 }}
                                 onClick={() => handleSelect(result.path)}
                                 className={`px-4 py-3 cursor-pointer flex flex-col border-b border-gray-200 dark:border-gray-700 last:border-b-0 ${index === highlightedIndex
-                                        ? 'bg-gray-200 dark:bg-gray-700'
-                                        : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                                    ? 'bg-gray-200 dark:bg-gray-700'
+                                    : 'hover:bg-gray-100 dark:hover:bg-gray-700'
                                     }`}
                             >
                                 <span className="font-medium text-gray-900 dark:text-white">{result.name}</span>

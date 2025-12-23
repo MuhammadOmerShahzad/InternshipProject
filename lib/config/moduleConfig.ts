@@ -34,7 +34,7 @@ export const MODULES: ModuleConfig[] = [
         name: 'Licenses',
         slug: 'licenses',
         displayName: 'Licenses',
-        icon: '/images/licenses.webp',
+        icon: '/images/modules/licenses.webp',
         subModules: [
             {
                 name: 'Trade Licenses',
@@ -82,7 +82,7 @@ export const MODULES: ModuleConfig[] = [
         name: 'Approvals',
         slug: 'approvals',
         displayName: 'Approvals',
-        icon: '/images/approved.webp',
+        icon: '/images/modules/approved.webp',
         subModules: [
             {
                 name: 'Outer Spaces',
@@ -105,7 +105,7 @@ export const MODULES: ModuleConfig[] = [
         name: 'Vehicles',
         slug: 'vehicles',
         displayName: 'Vehicles',
-        icon: '/images/vehicle.webp',
+        icon: '/images/modules/vehicle.webp',
         subModules: [
             {
                 name: 'Maintenance',
@@ -151,7 +151,7 @@ export const MODULES: ModuleConfig[] = [
         name: 'Taxation',
         slug: 'taxation',
         displayName: 'Taxation',
-        icon: '/images/taxation.webp',
+        icon: '/images/modules/taxation.webp',
         subModules: [
             {
                 name: 'Marketing / BillBoards Taxes',
@@ -175,7 +175,7 @@ export const MODULES: ModuleConfig[] = [
         name: 'Certificates',
         slug: 'certificates',
         displayName: 'Certificates',
-        icon: '/images/certificate.webp',
+        icon: '/images/modules/certificate.webp',
         subModules: [
             {
                 name: 'Electric Fitness Test',
@@ -193,7 +193,7 @@ export const MODULES: ModuleConfig[] = [
         name: 'Security',
         slug: 'security',
         displayName: 'Security',
-        icon: '/images/security.webp',
+        icon: '/images/modules/security.webp',
         subModules: [
             {
                 name: 'Guard Training',
@@ -211,7 +211,7 @@ export const MODULES: ModuleConfig[] = [
         name: 'Health Safety Environment',
         slug: 'hse',
         displayName: 'Health Safety Environment',
-        icon: '/images/hse.webp',
+        icon: '/images/modules/hse.webp',
         subModules: [
             {
                 name: 'Monthly Inspection',
@@ -263,7 +263,7 @@ export const MODULES: ModuleConfig[] = [
         name: 'Rental Agreements',
         slug: 'rental-agreements',
         displayName: 'Rental Agreements',
-        icon: '/images/rental_agreements.webp',
+        icon: '/images/modules/rental_agreements.webp',
         subModules: [], // Direct page - no submodules
         filePathPrefix: 'RNT/AGR', // Add file path prefix for rental agreements
     },

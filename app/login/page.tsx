@@ -40,13 +40,13 @@ function LoginForm() {
     };
 
     return (
-        <div className="min-h-screen w-full flex items-center justify-center bg-[url('/images/background.jpg')] bg-cover bg-center p-4 font-sans">
+        <div className="min-h-screen w-full flex items-center justify-center bg-[url('/images/backgrounds/background.jpg')] bg-cover bg-center p-4 font-sans">
             <div className="w-full max-w-[1100px] bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col md:flex-row p-4 md:p-6 gap-6 md:gap-12 items-center">
 
                 {/* Left Side - Image */}
                 <div className="hidden md:block w-1/2 h-[600px] relative rounded-2xl overflow-hidden">
                     <Image
-                        src="/images/muawin_signin.jpg"
+                        src='/images/backgrounds/muawin_signin.jpg'
                         alt="Welcome to Muawin"
                         fill
                         className="object-cover"
@@ -61,7 +61,7 @@ function LoginForm() {
                     <div className="flex flex-col items-center mb-8">
                         <div className="relative w-72 h-20 mb-2">
                             <Image
-                                src="/images/muawin_logo_orange.png"
+                                src='/images/logos/muawin_logo_orange.png'
                                 alt="Muawin Logo"
                                 fill
                                 className="object-contain"
@@ -172,7 +172,7 @@ function LoginForm() {
 // Loading fallback for Suspense
 function LoginLoading() {
     return (
-        <div className="min-h-screen w-full flex items-center justify-center bg-[url('/images/background.jpg')] bg-cover bg-center">
+        <div className="min-h-screen w-full flex items-center justify-center bg-[url('/images/backgrounds/background.jpg')] bg-cover bg-center">
             <div className="flex flex-col items-center gap-4">
                 <Loader2 className="w-10 h-10 animate-spin text-[#F9572A]" />
                 <p className="text-white text-lg">Loading...</p>

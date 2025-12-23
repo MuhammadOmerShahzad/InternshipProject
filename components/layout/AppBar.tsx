@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Menu, X, Search, Sun, Moon, Bell, User as UserIcon } from 'lucide-react';
-import SearchBar from './SearchBar';
+import GlobalSearchBar from './GlobalSearchBar';
 import ProfileMenu from './ProfileMenu';
 import NotificationMenu from './NotificationMenu';
 import { notificationService, Notification } from '@/lib/services/notificationService';
@@ -171,7 +171,7 @@ export default function AppBar({
                     {/* Desktop Search Bar */}
                     {!isMobile && (
                         <div className="flex-1 mx-4">
-                            <SearchBar
+                            <GlobalSearchBar
                                 searchQuery={searchQuery}
                                 onSearch={onSearch}
                                 searchResults={searchResults}
@@ -244,7 +244,7 @@ export default function AppBar({
                 {/* Mobile Search Bar */}
                 {isMobile && mobileSearchOpen && (
                     <div className="bg-[#f15a22] px-4 pb-4">
-                        <SearchBar
+                        <GlobalSearchBar
                             searchQuery={searchQuery}
                             onSearch={onSearch}
                             searchResults={searchResults}

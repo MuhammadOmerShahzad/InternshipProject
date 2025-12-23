@@ -60,17 +60,17 @@ export default function DashboardPage() {
     // useMemo MUST be called before any conditional returns (React rules of hooks)
     const tiles = useMemo(() => {
         const allTiles = [
-            { name: 'Licenses', image: '/images/licenses.webp' },
-            { name: 'Approvals', image: '/images/approved.webp' },
-            { name: 'Vehicles', image: '/images/vehicle.webp' },
-            { name: 'User Tickets', image: '/images/user_icon.webp' },
-            { name: 'Health Safety Environment', image: '/images/hse.webp' },
-            { name: 'Taxation', image: '/images/taxation.webp' },
-            { name: 'Certificates', image: '/images/certificate.webp' },
-            { name: 'Security', image: '/images/security.webp' },
-            { name: 'Admin Policies and SOPs', image: '/images/admin_icon.webp' },
-            { name: 'Rental Agreements', image: '/images/rental_agreements.webp' },
-            { name: 'User Management', image: '/images/user_management.webp' },
+            { name: 'Licenses', image: '/images/modules/licenses.webp' },
+            { name: 'Approvals', image: '/images/modules/approved.webp' },
+            { name: 'Vehicles', image: '/images/modules/vehicle.webp' },
+            { name: 'User Tickets', image: '/images/icons/user_icon.webp' },
+            { name: 'Health Safety Environment', image: '/images/modules/hse.webp' },
+            { name: 'Taxation', image: '/images/modules/taxation.webp' },
+            { name: 'Certificates', image: '/images/modules/certificate.webp' },
+            { name: 'Security', image: '/images/modules/security.webp' },
+            { name: 'Admin Policies and SOPs', image: '/images/icons/admin_icon.webp' },
+            { name: 'Rental Agreements', image: '/images/modules/rental_agreements.webp' },
+            { name: 'User Management', image: '/images/modules/user_management.webp' },
         ];
 
         return allTiles.filter((tile) =>
