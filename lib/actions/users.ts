@@ -44,20 +44,26 @@ export interface UpdateUserInput {
  * Uses service client to bypass RLS
  */
 export async function getCurrentUser() {
+    // const startTime = Date.now();
+    // console.log('[getCurrentUser] Starting...');
+
     // Use regular client to get auth session
     const supabase = await createClient();
+    const _authStart = Date.now();
 
     const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+    // console.log(`[getCurrentUser] Auth check took ${Date.now() - _authStart}ms`);
 
     if (authError || !authUser) {
         console.log('[getCurrentUser] No authenticated user found');
         return { user: null, error: authError?.message || 'Not authenticated' };
     }
 
-    console.log('[getCurrentUser] Auth user found:', authUser.id, authUser.email);
+    // console.log('[getCurrentUser] Auth user found:', authUser.id, authUser.email);
 
     // Use service client to fetch user profile (bypasses RLS)
     const serviceClient = createServiceClient();
+    const _dbStart = Date.now();
 
     const { data: userData, error: userError } = await serviceClient
         .from('users')
@@ -68,6 +74,8 @@ export async function getCurrentUser() {
         `)
         .eq('id', authUser.id)
         .single();
+
+    // console.log(`[getCurrentUser] DB fetch took ${Date.now() - dbStart}ms`);
 
     if (userError) {
         console.error('[getCurrentUser] Error fetching user profile:', userError);
@@ -91,7 +99,8 @@ export async function getCurrentUser() {
         };
     }
 
-    console.log('[getCurrentUser] User profile fetched:', userData?.name, userData?.role);
+    // console.log(`[getCurrentUser] Total time: ${Date.now() - startTime}ms`);
+    // console.log('[getCurrentUser] User profile fetched:', userData?.name, userData?.role);
 
     return {
         user: {

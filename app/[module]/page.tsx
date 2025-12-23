@@ -18,7 +18,6 @@ interface ModulePageProps {
 export default function ModuleMainPage({ params }: ModulePageProps) {
     const { user, loading: _userLoading } = useUser();
     const [resolvedParams, setResolvedParams] = useState<{ module: string } | null>(null);
-    const [searchQuery, setSearchQuery] = useState('');
     const [mobileOpen, setMobileOpen] = useState(false);
     const [desktopOpen, setDesktopOpen] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
@@ -57,9 +56,6 @@ export default function ModuleMainPage({ params }: ModulePageProps) {
     return (
         <>
             <AppBar
-                searchQuery={searchQuery}
-                onSearch={setSearchQuery}
-                searchResults={[]}
                 user={user}
                 mobileOpen={mobileOpen}
                 setMobileOpen={setMobileOpen}

@@ -1,6 +1,7 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState, useRef, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useRef, ReactNode, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { User as SupabaseUser } from '@supabase/supabase-js';
 import { getCurrentUser } from '@/lib/actions/users';
@@ -31,44 +32,42 @@ const UserContext = createContext<UserContextType>({
     refreshUser: async () => { },
 });
 
+// Timeout wrapper for promises
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+    const timeout = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Request timeout')), ms)
+    );
+    return Promise.race([promise, timeout]);
+}
+
 export function UserProvider({ children }: { children: ReactNode }) {
+    const router = useRouter();
     const [user, setUser] = useState<AppUser | null>(null);
     const [supabaseUser, setSupabaseUser] = useState<SupabaseUser | null>(null);
     const [loading, setLoading] = useState(true);
     const supabase = createClient();
     const isRefreshing = useRef(false);
-    const hasInitialized = useRef(false);
+    const retryCount = useRef(0);
+    const MAX_RETRIES = 2;
 
-    const refreshUser = async () => {
-        // Prevent concurrent refreshes
-        if (isRefreshing.current) {
-            console.log('⏳ [UserContext] Already refreshing, skipping...');
-            return;
-        }
-
-        isRefreshing.current = true;
-        console.log('🔄 [UserContext] Refreshing user via server action...');
+    // Fetch user profile from server action
+    const fetchUserProfile = useCallback(async (authUser: SupabaseUser): Promise<void> => {
+        // const startTime = Date.now();
+        // console.log('📥 [UserContext] Fetching user profile...');
 
         try {
-            // Get auth user from client
-            const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+            // Call server action with 10 second timeout
+            const { user: userData, error: userError } = await withTimeout(
+                getCurrentUser(),
+                10000
+            );
 
-            if (authError || !authUser) {
-                console.log('⚠️ [UserContext] No auth user found');
-                setUser(null);
-                setSupabaseUser(null);
-                return;
-            }
-
-            console.log('✅ [UserContext] Auth user found:', authUser.id, authUser.email);
-            setSupabaseUser(authUser);
-
-            // Use server action to get full user profile (bypasses RLS)
-            const { user: userData, error: userError } = await getCurrentUser();
+            // const elapsed = Date.now() - startTime;
+            // console.log(`⏱️ [UserContext] getCurrentUser took ${elapsed}ms`);
 
             if (userError || !userData) {
                 console.error('❌ [UserContext] Error from getCurrentUser:', userError);
-                // Set basic user data from auth
+                // Set basic user data from auth as fallback
                 setUser({
                     id: authUser.id,
                     email: authUser.email || '',
@@ -81,7 +80,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
                 return;
             }
 
-            console.log('✅ [UserContext] User data fetched:', userData.name, userData.role);
+            // console.log('✅ [UserContext] User profile fetched:', userData.name, userData.role);
 
             // Map to AppUser format
             setUser({
@@ -96,59 +95,133 @@ export function UserProvider({ children }: { children: ReactNode }) {
                 registeredModules: userData.registered_modules || [],
             });
 
-            console.log('👤 [UserContext] App user constructed:', user); // Note: 'user' here refers to the state variable, not the 'appUser' local variable which is now removed.
+        } catch (err) {
+            console.error('❌ [UserContext] Exception fetching profile:', err);
+
+            // Retry logic
+            if (retryCount.current < MAX_RETRIES) {
+                retryCount.current++;
+                // console.log(`🔄 [UserContext] Retrying... (attempt ${retryCount.current}/${MAX_RETRIES})`);
+                await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+                return fetchUserProfile(authUser);
+            }
+
+            // Fallback after retries exhausted
+            setUser({
+                id: authUser.id,
+                email: authUser.email || '',
+                name: authUser.email?.split('@')[0] || 'User',
+                role: 'Admin',
+                branch: 'Default Branch',
+                zone: 'Default Zone',
+                registeredModules: [],
+            });
+        }
+    }, []);
+
+    // Main refresh function - simplified
+    const refreshUser = useCallback(async () => {
+        if (isRefreshing.current) {
+            // console.log('⏳ [UserContext] Already refreshing, skipping...');
+            return;
+        }
+
+        isRefreshing.current = true;
+        retryCount.current = 0;
+        // console.log('🔄 [UserContext] Starting user refresh...');
+
+        try {
+            // Get current auth user
+            const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+
+            if (authError || !authUser) {
+                // console.log('⚠️ [UserContext] No auth user found');
+                setUser(null);
+                setSupabaseUser(null);
+                return;
+            }
+
+            // console.log('✅ [UserContext] Auth user:', authUser.email);
+            setSupabaseUser(authUser);
+
+            // Fetch profile
+            await fetchUserProfile(authUser);
 
         } catch (err) {
             console.error('❌ [UserContext] Exception in refreshUser:', err);
-            setUser(null);
-            setSupabaseUser(null);
+
+            // Check for network errors and redirect to login
+            if (err instanceof Error &&
+                (err.message.includes('Failed to fetch') ||
+                    err.message.includes('NetworkError') ||
+                    err.message.includes('network'))) {
+                // console.log('🔌 [UserContext] Network error, redirecting to login...');
+                setUser(null);
+                setSupabaseUser(null);
+                router.push('/login?reason=session_expired');
+            }
         } finally {
             isRefreshing.current = false;
         }
-    };
+    }, [supabase, router, fetchUserProfile]);
 
+    // Initialize on mount and listen for auth changes
     useEffect(() => {
-        // Only initialize once
-        if (hasInitialized.current) return;
-        hasInitialized.current = true;
+        let mounted = true;
 
-        const initializeUser = async () => {
-            console.log('🚀 [UserContext] Initializing user context...');
+        const initialize = async () => {
+            // console.log('🚀 [UserContext] Initializing...');
             setLoading(true);
+
             try {
                 await refreshUser();
             } finally {
-                setLoading(false);
-                console.log('✅ [UserContext] Initialization complete');
+                if (mounted) {
+                    setLoading(false);
+                    // console.log('✅ [UserContext] Initialization complete');
+                }
             }
         };
 
-        initializeUser();
+        initialize();
 
-        // Listen for auth changes - but only for sign in/out events
+        // Auth state listener
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
             async (event, session) => {
-                console.log('🔔 [UserContext] Auth state changed:', event);
+                // console.log('🔔 [UserContext] Auth event:', event, session?.user?.email);
 
-                // Only handle explicit sign in/out events
-                if (event === 'SIGNED_IN' && session?.user && !user) {
-                    console.log('✅ [UserContext] User signed in:', session.user.email);
+                if (!mounted) return;
+
+                if (event === 'SIGNED_IN' && session?.user) {
+                    // console.log('✅ [UserContext] Signed in, fetching profile...');
                     setSupabaseUser(session.user);
-                    await refreshUser();
+                    setLoading(true);
+                    retryCount.current = 0;
+
+                    try {
+                        await fetchUserProfile(session.user);
+                    } finally {
+                        if (mounted) setLoading(false);
+                    }
+
                 } else if (event === 'SIGNED_OUT') {
-                    console.log('👋 [UserContext] User signed out');
+                    // console.log('👋 [UserContext] Signed out');
                     setUser(null);
                     setSupabaseUser(null);
+                    setLoading(false);
+
+                } else if (event === 'TOKEN_REFRESHED' && session?.user) {
+                    // console.log('🔄 [UserContext] Token refreshed');
+                    setSupabaseUser(session.user);
                 }
-                // Ignore INITIAL_SESSION and TOKEN_REFRESHED events
             }
         );
 
         return () => {
+            mounted = false;
             subscription.unsubscribe();
         };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [supabase, refreshUser, fetchUserProfile]);
 
     return (
         <UserContext.Provider value={{ user, supabaseUser, loading, refreshUser }}>

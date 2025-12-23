@@ -47,7 +47,6 @@ interface FilePageTemplateProps {
 
 export default function FilePageTemplate({ title, subModule, user, moduleSlug, submoduleSlug }: FilePageTemplateProps) {
     // Layout state
-    const [searchQuery, setSearchQuery] = useState('');
     const [mobileOpen, setMobileOpen] = useState(false);
     const [desktopOpen, setDesktopOpen] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
@@ -298,9 +297,6 @@ export default function FilePageTemplate({ title, subModule, user, moduleSlug, s
     return (
         <>
             <AppBar
-                searchQuery={searchQuery}
-                onSearch={setSearchQuery}
-                searchResults={[]}
                 user={user}
                 mobileOpen={mobileOpen}
                 setMobileOpen={setMobileOpen}

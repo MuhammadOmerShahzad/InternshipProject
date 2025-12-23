@@ -27,7 +27,6 @@ export default function ModuleCatchAllPage({ params }: ModulePageProps) {
     const _router = useRouter();
     const { user, loading: _userLoading } = useUser();
     const [resolvedParams, setResolvedParams] = useState<{ module: string; slug?: string[] } | null>(null);
-    const [searchQuery, setSearchQuery] = useState('');
     const [mobileOpen, setMobileOpen] = useState(false);
     const [desktopOpen, setDesktopOpen] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
@@ -90,9 +89,6 @@ export default function ModuleCatchAllPage({ params }: ModulePageProps) {
     return (
         <>
             <AppBar
-                searchQuery={searchQuery}
-                onSearch={setSearchQuery}
-                searchResults={[]}
                 user={user}
                 mobileOpen={mobileOpen}
                 setMobileOpen={setMobileOpen}

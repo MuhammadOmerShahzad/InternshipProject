@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import localFont from "next/font/local";
 import { UserProvider } from "@/lib/context/UserContext";
 import { ThemeProvider } from "@/lib/context/ThemeContext";
+import { IdleTimeoutProvider } from "@/components/providers/IdleTimeoutProvider";
 import { Toaster } from "sonner";
 import "./globals.css";
 
@@ -39,7 +40,9 @@ export default function RootLayout({
       >
         <ThemeProvider>
           <UserProvider>
-            {children}
+            <IdleTimeoutProvider>
+              {children}
+            </IdleTimeoutProvider>
           </UserProvider>
         </ThemeProvider>
         <Toaster

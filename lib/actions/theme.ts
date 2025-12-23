@@ -1,11 +1,12 @@
 'use server';
 
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createServiceClient } from '@/lib/supabase/server';
 
 export type ThemePreference = 'light' | 'dark' | 'system';
 
 /**
  * Update user's theme preference in the database
+ * Uses service client to bypass RLS
  */
 export async function updateThemePreference(theme: ThemePreference): Promise<{ success: boolean; error?: string }> {
     try {
@@ -18,8 +19,11 @@ export async function updateThemePreference(theme: ThemePreference): Promise<{ s
             return { success: false, error: 'Not authenticated' };
         }
 
+        // Use service client to bypass RLS
+        const serviceClient = createServiceClient();
+
         // Update the user's theme preference
-        const { error: updateError } = await supabase
+        const { error: updateError } = await serviceClient
             .from('users')
             .update({ theme_preference: theme })
             .eq('id', user.id);
@@ -38,6 +42,7 @@ export async function updateThemePreference(theme: ThemePreference): Promise<{ s
 
 /**
  * Get user's theme preference from the database
+ * Uses service client to bypass RLS
  */
 export async function getThemePreference(): Promise<{ theme: ThemePreference | null; error?: string }> {
     try {
@@ -50,8 +55,11 @@ export async function getThemePreference(): Promise<{ theme: ThemePreference | n
             return { theme: null, error: 'Not authenticated' };
         }
 
+        // Use service client to bypass RLS
+        const serviceClient = createServiceClient();
+
         // Fetch the user's theme preference
-        const { data, error: fetchError } = await supabase
+        const { data, error: fetchError } = await serviceClient
             .from('users')
             .select('theme_preference')
             .eq('id', user.id)

@@ -10,11 +10,6 @@ import Tabs from '@/components/dashboard/Tabs';
 import AnnouncementForm from '@/components/dashboard/AnnouncementForm';
 import BranchTasksForm from '@/components/dashboard/BranchTasksForm';
 
-interface SearchResult {
-    name: string;
-    category: string;
-    path: string;
-}
 const DEFAULT_MODULES = [
     'Licenses',
     'Approvals',
@@ -38,8 +33,6 @@ export default function DashboardPage() {
     const [hoveredButton, setHoveredButton] = useState<string | null>(null);
 
     // AppBar state
-    const [searchQuery, setSearchQuery] = useState('');
-    const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
     const [mobileOpen, setMobileOpen] = useState(false);
     const [desktopOpen, setDesktopOpen] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
@@ -85,20 +78,11 @@ export default function DashboardPage() {
         setRefreshTrigger((prev) => prev + 1);
     };
 
-    const handleSearch = (query: string) => {
-        setSearchQuery(query);
-        // TODO: Implement search logic
-        if (!query) {
-            setSearchResults([]);
-        }
-    };
+
 
     return (
         <>
             <AppBar
-                searchQuery={searchQuery}
-                onSearch={handleSearch}
-                searchResults={searchResults}
                 user={user}
                 mobileOpen={mobileOpen}
                 setMobileOpen={setMobileOpen}

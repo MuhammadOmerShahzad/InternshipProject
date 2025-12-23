@@ -11,12 +11,27 @@ function LoginForm() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const redirectTo = searchParams.get('redirectTo') || '/dashboard';
+    const reason = searchParams.get('reason');
 
     const [showPassword, setShowPassword] = useState(false);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+
+    // Get message based on redirect reason
+    const getReasonMessage = () => {
+        switch (reason) {
+            case 'timeout':
+                return 'Your session has expired due to inactivity. Please sign in again.';
+            case 'session_expired':
+                return 'Your session has expired. Please sign in again.';
+            default:
+                return null;
+        }
+    };
+
+    const reasonMessage = getReasonMessage();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -73,6 +88,13 @@ function LoginForm() {
                         </h2>
                         <div className="w-20 h-1.5 bg-[#F9572A] rounded-full mt-4"></div>
                     </div>
+
+                    {/* Session Timeout/Expiry Message */}
+                    {reasonMessage && (
+                        <div className="w-full max-w-md mb-4 p-3 bg-orange-50 border border-orange-200 rounded-lg text-orange-700 text-sm text-center">
+                            {reasonMessage}
+                        </div>
+                    )}
 
                     {/* Error Message */}
                     {error && (
