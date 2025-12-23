@@ -101,7 +101,7 @@ export default function DrawerComponent({
     const items: MenuItem[] = [
         {
             text: 'Licenses',
-            icon: '/images/licenses.webp',
+            icon: '/images/modules/licenses.webp',
             path: '/licenses',
             submenu: [
                 { text: 'Trade Licenses', path: '/licenses' },
@@ -112,13 +112,13 @@ export default function DrawerComponent({
         },
         {
             text: 'Approvals',
-            icon: '/images/approved.webp',
+            icon: '/images/modules/approved.webp',
             path: '/approvals',
             submenu: [{ text: 'Outer Spaces', path: '/approvals' }],
         },
         {
             text: 'Vehicles',
-            icon: '/images/vehicle.webp',
+            icon: '/images/modules/vehicle.webp',
             path: '/vehicles',
             submenu: [
                 { text: 'Maintenance', path: '/vehicles' },
@@ -128,7 +128,7 @@ export default function DrawerComponent({
         },
         {
             text: 'Health Safety Environment',
-            icon: '/images/hse.webp',
+            icon: '/images/modules/hse.webp',
             path: '/hse',
             submenu: [
                 { text: 'Monthly Inspection', path: '/hse/monthly-inspection' },
@@ -140,7 +140,7 @@ export default function DrawerComponent({
         },
         {
             text: 'Taxation',
-            icon: '/images/taxation.webp',
+            icon: '/images/modules/taxation.webp',
             path: '/taxation',
             submenu: [
                 { text: 'Marketing / Bill Boards Taxes', path: '/taxation' },
@@ -149,33 +149,33 @@ export default function DrawerComponent({
         },
         {
             text: 'Certificates',
-            icon: '/images/certificate.webp',
+            icon: '/images/modules/certificate.webp',
             path: '/certificates',
             submenu: [{ text: 'Electric Fitness Test', path: '/certificates/electric-fitness' }],
         },
         {
             text: 'Security',
-            icon: '/images/security.webp',
+            icon: '/images/modules/security.webp',
             path: '/security',
         },
         {
             text: 'Admin Policies and SOPs',
-            icon: '/images/admin_icon.webp',
+            icon: '/images/icons/admin_icon.webp',
             path: '/admin-policies',
         },
         {
             text: 'Rental Agreements',
-            icon: '/images/rental_agreements.webp',
+            icon: '/images/modules/rental_agreements.webp',
             path: '/rental-agreements',
         },
         {
             text: 'User Management',
-            icon: '/images/user_management.webp',
+            icon: '/images/modules/user_management.webp',
             path: '/user-management',
         },
         {
             text: 'User Tickets',
-            icon: '/images/user_icon.webp',
+            icon: '/images/icons/user_icon.webp',
             path: '/user-tickets',
         },
     ];

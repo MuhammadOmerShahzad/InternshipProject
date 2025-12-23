@@ -17,16 +17,7 @@ interface User {
     branch: string;
 }
 
-interface SearchResult {
-    name: string;
-    category: string;
-    path: string;
-}
-
 interface AppBarProps {
-    searchQuery?: string;
-    onSearch?: (query: string) => void;
-    searchResults?: SearchResult[];
     user: User | null;
     mobileOpen?: boolean;
     setMobileOpen?: (open: boolean) => void;
@@ -35,9 +26,6 @@ interface AppBarProps {
 }
 
 export default function AppBar({
-    searchQuery = '',
-    onSearch = () => { },
-    searchResults = [],
     user,
     mobileOpen = false,
     setMobileOpen = () => { },
@@ -159,7 +147,7 @@ export default function AppBar({
                     <Link href="/" className="flex items-center">
                         <div className="relative w-24 sm:w-32 h-10">
                             <Image
-                                src="/images/muawin_logo_white.svg"
+                                src='/images/logos/muawin_logo_white.svg'
                                 alt="Muawin Logo"
                                 fill
                                 className="object-contain cursor-pointer"
@@ -171,11 +159,7 @@ export default function AppBar({
                     {/* Desktop Search Bar */}
                     {!isMobile && (
                         <div className="flex-1 mx-4">
-                            <GlobalSearchBar
-                                searchQuery={searchQuery}
-                                onSearch={onSearch}
-                                searchResults={searchResults}
-                            />
+                            <GlobalSearchBar />
                         </div>
                     )}
 
@@ -244,12 +228,7 @@ export default function AppBar({
                 {/* Mobile Search Bar */}
                 {isMobile && mobileSearchOpen && (
                     <div className="bg-[#f15a22] px-4 pb-4">
-                        <GlobalSearchBar
-                            searchQuery={searchQuery}
-                            onSearch={onSearch}
-                            searchResults={searchResults}
-                            fullWidth
-                        />
+                        <GlobalSearchBar fullWidth />
                     </div>
                 )}
             </header>
