@@ -2,6 +2,7 @@
 
 import React, { useState, Suspense } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { login } from '@/lib/actions/auth';
@@ -137,12 +138,12 @@ function LoginForm() {
 
                         {/* Forgot Password Link */}
                         <div className="flex justify-end">
-                            <a
+                            <Link
                                 href="/forgot-password"
                                 className="text-sm text-[#F9572A] hover:underline"
                             >
                                 Forgot Password?
-                            </a>
+                            </Link>
                         </div>
 
                         {/* Login Button */}

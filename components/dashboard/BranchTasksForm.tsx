@@ -7,7 +7,6 @@ import { createTasks } from '@/lib/actions/tasks';
 
 interface BranchTasksFormProps {
     onClose: () => void;
-    user: { name: string };
     onTasksAdded?: () => void;
 }
 
@@ -22,7 +21,7 @@ interface TaskInput {
     description: string;
 }
 
-export default function BranchTasksForm({ onClose, user, onTasksAdded }: BranchTasksFormProps) {
+export default function BranchTasksForm({ onClose, onTasksAdded }: BranchTasksFormProps) {
     const [tasks, setTasks] = useState<TaskInput[]>([
         { id: '1', title: '', description: '' }
     ]);
@@ -123,7 +122,7 @@ export default function BranchTasksForm({ onClose, user, onTasksAdded }: BranchT
             onClick={handleClose}
         >
             <div
-                className={`bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden border border-gray-100 dark:border-gray-700 ${isClosing ? 'animate-scaleOut' : 'animate-scaleIn'}`}
+                className={`bg-white dark:bg-[#1a1a1a] rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden border border-gray-100 dark:border-[#333] ${isClosing ? 'animate-scaleOut' : 'animate-scaleIn'}`}
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Header */}

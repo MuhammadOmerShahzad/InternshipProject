@@ -15,6 +15,7 @@ export interface ModuleConfig {
     displayName: string;
     icon: string;
     subModules: SubModule[];
+    filePathPrefix?: string; // Optional: for modules with no sub-modules
 }
 
 // Helper to generate slug from name (kept for reference)
@@ -264,6 +265,7 @@ export const MODULES: ModuleConfig[] = [
         displayName: 'Rental Agreements',
         icon: '/images/rental_agreements.webp',
         subModules: [], // Direct page - no submodules
+        filePathPrefix: 'RNT/AGR', // Add file path prefix for rental agreements
     },
 
     // ============================================

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 
@@ -13,11 +13,7 @@ interface TileProps {
 export default function TileComponent({ name, image, onClick }: TileProps) {
     const router = useRouter();
     const [isHovered, setIsHovered] = useState(false);
-    const [hasLoaded, setHasLoaded] = useState(false);
-
-    useEffect(() => {
-        setHasLoaded(true);
-    }, []);
+    const [hasLoaded] = useState(true); // Component is loaded when rendered
 
     const handleClick = () => {
         if (onClick) {
@@ -54,7 +50,7 @@ export default function TileComponent({ name, image, onClick }: TileProps) {
         ${hasLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'}
         ${isHovered
                     ? 'bg-gradient-to-br from-[#ff8c42] to-[#ffb366] shadow-[0_8px_25px_rgba(255,140,66,0.4),0_0_0_3px_rgba(255,140,66,0.1)] -translate-y-1 scale-[1.02]'
-                    : 'bg-white dark:bg-[#333] shadow-[0_4px_15px_rgba(0,0,0,0.2)]'
+                    : 'bg-white dark:bg-[#1a1a1a] shadow-[0_4px_15px_rgba(0,0,0,0.2)]'
                 }
         ${isHovered ? 'animate-pulse-custom' : ''}
         before:content-[''] before:absolute before:top-0 before:left-[-100%] 

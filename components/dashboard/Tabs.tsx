@@ -15,33 +15,31 @@ interface Announcement {
 
 interface TabComponentProps {
     latestAnnouncement?: Announcement | null;
-    userId?: string;
-    userZone?: string;
-    userBranch?: string;
+    _userId?: string;
+    _userZone?: string;
+    _userBranch?: string;
     userBranchId?: string;
-    userEmail?: string;
+    _userEmail?: string;
     refreshTrigger?: number;
 }
 
 export default function TabComponent({
     latestAnnouncement,
-    userId,
-    userZone,
-    userBranch,
+    _userId,
+    _userZone,
+    _userBranch,
     userBranchId,
-    userEmail,
+    _userEmail,
     refreshTrigger,
 }: TabComponentProps) {
     const [activeTab, setActiveTab] = useState(0);
-    const [announcement, setAnnouncement] = useState<Announcement | null>(null);
+    const [announcement, setAnnouncement] = useState<Announcement | null>(latestAnnouncement || null);
     const [isHovered, setIsHovered] = useState(false);
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
-        if (latestAnnouncement) {
-            setAnnouncement(latestAnnouncement);
-        } else if (userBranchId) {
-            // Fetch latest announcement for user's branch
+        // Only fetch if no latestAnnouncement is provided
+        if (!latestAnnouncement && userBranchId) {
             const fetchAnnouncement = async () => {
                 setLoading(true);
                 const { announcement: fetchedAnnouncement } = await getLatestAnnouncement(userBranchId);
@@ -49,6 +47,9 @@ export default function TabComponent({
                 setLoading(false);
             };
             fetchAnnouncement();
+        } else if (latestAnnouncement) {
+            // Update when latestAnnouncement changes
+            setAnnouncement(latestAnnouncement);
         }
     }, [latestAnnouncement, userBranchId, refreshTrigger]);
 
@@ -153,11 +154,7 @@ export default function TabComponent({
 
                 {activeTab === 1 && (
                     <TodoList
-                        userId={userId}
-                        userZone={userZone}
-                        userBranch={userBranch}
                         userBranchId={userBranchId}
-                        userEmail={userEmail}
                         refreshTrigger={refreshTrigger}
                     />
                 )}

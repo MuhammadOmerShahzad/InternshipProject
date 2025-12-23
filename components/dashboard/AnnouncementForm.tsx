@@ -7,8 +7,7 @@ import { postAnnouncement } from '@/lib/actions/announcements';
 
 interface AnnouncementFormProps {
     onClose: () => void;
-    user: { name: string };
-    onAnnouncementAdded?: (announcement: any) => void;
+    onAnnouncementAdded?: (announcement: { id: string; title: string; message: string; created_at: string; created_by: string; creator_name?: string }) => void;
 }
 
 interface Branch {
@@ -16,7 +15,7 @@ interface Branch {
     name: string;
 }
 
-export default function AnnouncementForm({ onClose, user, onAnnouncementAdded }: AnnouncementFormProps) {
+export default function AnnouncementForm({ onClose, onAnnouncementAdded }: AnnouncementFormProps) {
     const [title, setTitle] = useState('');
     const [message, setMessage] = useState('');
     const [branches, setBranches] = useState<Branch[]>([]);
@@ -95,7 +94,7 @@ export default function AnnouncementForm({ onClose, user, onAnnouncementAdded }:
             onClick={handleClose}
         >
             <div
-                className={`bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden border border-gray-100 dark:border-gray-700 ${isClosing ? 'animate-scaleOut' : 'animate-scaleIn'}`}
+                className={`bg-white dark:bg-[#1a1a1a] rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden border border-gray-100 dark:border-[#333] ${isClosing ? 'animate-scaleOut' : 'animate-scaleIn'}`}
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Header */}

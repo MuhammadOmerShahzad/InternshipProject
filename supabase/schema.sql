@@ -133,7 +133,10 @@ CREATE TABLE IF NOT EXISTS public.users (
   
   -- Timestamps
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  
+  -- Theme preference (light/dark/system)
+  theme_preference TEXT DEFAULT 'light' CHECK (theme_preference IN ('light', 'dark', 'system'))
 );
 
 -- =============================================

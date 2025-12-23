@@ -18,16 +18,17 @@ export default function EditModulesDrawer({ open, onClose, user, onModulesUpdate
 
     // Initialize checked modules from user data
     useEffect(() => {
-        if (user && user.registered_modules) {
+        if (user?.registered_modules) {
             const initial: Record<string, boolean> = {};
-            user.registered_modules.forEach((mod) => {
-                initial[mod] = true;
+            user.registered_modules.forEach((moduleName) => {
+                initial[moduleName] = true;
             });
             setCheckedModules(initial);
         } else {
             setCheckedModules({});
         }
-    }, [user]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [user?.id, user?.registered_modules?.join(',')]);
 
     // Handle module change
     const handleModuleChange = (moduleKey: string, checked: boolean) => {
@@ -39,12 +40,12 @@ export default function EditModulesDrawer({ open, onClose, user, onModulesUpdate
 
     // Handle select all submodules
     const handleSelectAllSubmodules = (moduleName: string, checked: boolean) => {
-        const module = MODULES.find((m) => m.name === moduleName);
-        if (!module) return;
+        const moduleItem = MODULES.find((m) => m.name === moduleName);
+        if (!moduleItem) return;
 
         const updates: Record<string, boolean> = {};
-        if (module.subModules.length > 0) {
-            module.subModules.forEach((sub) => {
+        if (moduleItem.subModules.length > 0) {
+            moduleItem.subModules.forEach((sub) => {
                 updates[`${moduleName}_${sub.name}`] = checked;
             });
         } else {

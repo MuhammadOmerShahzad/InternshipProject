@@ -21,27 +21,29 @@ export default function EditBranchDrawer({ open, onClose, onBranchUpdated }: Edi
     const [newBranchName, setNewBranchName] = useState('');
     const [error, setError] = useState('');
 
-    // Fetch all branches
-    useEffect(() => {
-        if (open) {
-            fetchBranches();
-        }
-    }, [open]);
-
     const fetchBranches = async () => {
         const { branches: fetchedBranches } = await getAllBranches();
         setBranches(fetchedBranches as BranchWithZone[]);
     };
 
-    // Update new branch name when selection changes
+    // Fetch all branches
     useEffect(() => {
-        const selectedBranch = branches.find(b => b.id === selectedBranchId);
+        if (open) {
+            fetchBranches();
+        }
+         
+    }, [open]);
+
+    // Update new branch name when selection changes
+    const selectedBranch = branches.find(b => b.id === selectedBranchId);
+    useEffect(() => {
         if (selectedBranch) {
             setNewBranchName(selectedBranch.name);
         } else {
             setNewBranchName('');
         }
-    }, [selectedBranchId, branches]);
+         
+    }, [selectedBranch]);
 
     const handleSave = async () => {
         if (!selectedBranchId || !newBranchName.trim()) {
@@ -75,8 +77,6 @@ export default function EditBranchDrawer({ open, onClose, onBranchUpdated }: Edi
         resetForm();
         onClose();
     };
-
-    const selectedBranch = branches.find(b => b.id === selectedBranchId);
 
     if (!open) return null;
 

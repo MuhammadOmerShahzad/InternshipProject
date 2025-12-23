@@ -1,10 +1,9 @@
 'use client';
 
-import { MouseEvent } from 'react';
 import { Notification } from '@/lib/services/notificationService';
 
 interface NotificationMenuProps {
-    anchorEl: HTMLElement | null;
+    _anchorEl: HTMLElement | null;
     open: boolean;
     onClose: () => void;
     notifications?: Notification[];
@@ -13,7 +12,7 @@ interface NotificationMenuProps {
 }
 
 export default function NotificationMenu({
-    anchorEl,
+    _anchorEl,
     open,
     onClose,
     notifications = [],
@@ -105,8 +104,8 @@ export default function NotificationMenu({
                                 <div key={notification._id}>
                                     <div
                                         className={`p-4 flex gap-3 transition-colors ${notification.read
-                                                ? 'bg-white dark:bg-gray-800'
-                                                : 'bg-gray-50 dark:bg-gray-700/50'
+                                            ? 'bg-white dark:bg-gray-800'
+                                            : 'bg-gray-50 dark:bg-gray-700/50'
                                             } hover:bg-gray-100 dark:hover:bg-gray-700`}
                                     >
                                         <div className="flex-shrink-0 mt-1">

@@ -44,7 +44,7 @@ export default function AddFileButton({
                 multiple={multiple}
                 style={{ display: 'none' }}
                 onChange={handleFileChange}
-                accept=".pdf,.docx,.xlsx,.csv,.txt,.png,.jpg,.jpeg,.webp"
+                accept=".docx,.pdf,.xlsx,.xls,.csv,.png,.jpg,.jpeg"
             />
 
             <button

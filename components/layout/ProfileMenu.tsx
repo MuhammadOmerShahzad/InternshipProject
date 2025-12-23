@@ -11,7 +11,7 @@ interface User {
 }
 
 interface ProfileMenuProps {
-    anchorEl: HTMLElement | null;
+    _anchorEl: HTMLElement | null;
     isOpen: boolean;
     onClose: () => void;
     user: User | null;
@@ -19,7 +19,7 @@ interface ProfileMenuProps {
 }
 
 export default function ProfileMenu({
-    anchorEl,
+    _anchorEl,
     isOpen,
     onClose,
     user,

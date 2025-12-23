@@ -46,22 +46,6 @@ export default function AddUserDrawer({ open, onClose, onUserCreated }: AddUserD
     const [checkedModules, setCheckedModules] = useState<Record<string, boolean>>({});
     const [errors, setErrors] = useState<Record<string, string>>({});
 
-    // Fetch zones on mount
-    useEffect(() => {
-        if (open) {
-            fetchZones();
-        }
-    }, [open]);
-
-    // Fetch branches when zone changes
-    useEffect(() => {
-        if (formData.zoneId) {
-            fetchBranches(formData.zoneId);
-        } else {
-            setBranches([]);
-        }
-    }, [formData.zoneId]);
-
     const fetchZones = async () => {
         const { zones: fetchedZones } = await getZones();
         setZones(fetchedZones);
@@ -71,6 +55,24 @@ export default function AddUserDrawer({ open, onClose, onUserCreated }: AddUserD
         const { branches: fetchedBranches } = await getBranchesByZone(zoneId);
         setBranches(fetchedBranches);
     };
+
+    // Fetch zones on mount
+    useEffect(() => {
+        if (open) {
+            fetchZones();
+        }
+         
+    }, [open]);
+
+    // Fetch branches when zone changes
+    useEffect(() => {
+        if (formData.zoneId) {
+            fetchBranches(formData.zoneId);
+        } else {
+            setBranches([]);
+        }
+         
+    }, [formData.zoneId]);
 
     // Generate random password
     const generateRandomPassword = () => {
@@ -135,12 +137,12 @@ export default function AddUserDrawer({ open, onClose, onUserCreated }: AddUserD
 
     // Handle select all submodules
     const handleSelectAllSubmodules = (moduleName: string, checked: boolean) => {
-        const module = MODULES.find((m) => m.name === moduleName);
-        if (!module) return;
+        const moduleItem = MODULES.find((m) => m.name === moduleName);
+        if (!moduleItem) return;
 
         const updates: Record<string, boolean> = {};
-        if (module.subModules.length > 0) {
-            module.subModules.forEach((sub) => {
+        if (moduleItem.subModules.length > 0) {
+            moduleItem.subModules.forEach((sub) => {
                 updates[`${moduleName}_${sub.name}`] = checked;
             });
         } else {
@@ -274,8 +276,8 @@ export default function AddUserDrawer({ open, onClose, onUserCreated }: AddUserD
                             <div key={step} className="flex items-center gap-2 mb-4">
                                 <div
                                     className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${index <= activeStep
-                                            ? 'bg-[#f15a22] text-white'
-                                            : 'bg-gray-300 text-gray-600'
+                                        ? 'bg-[#f15a22] text-white'
+                                        : 'bg-gray-300 text-gray-600'
                                         }`}
                                 >
                                     {index < activeStep ? <Check size={16} /> : index + 1}

@@ -14,7 +14,7 @@ export interface NotificationResponse {
     unread: number;
 }
 
-const getNotifications = async (limit = 20, skip = 0): Promise<NotificationResponse> => {
+const getNotifications = async (): Promise<NotificationResponse> => {
     try {
         // TODO: Replace with actual API endpoint
         // const response = await fetch(`/api/notifications?limit=${limit}&skip=${skip}`);

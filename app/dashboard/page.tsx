@@ -1,8 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { Loader2 } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
 import { useUser } from '@/lib/context/UserContext';
 import AppBar from '@/components/layout/AppBar';
 import Drawer from '@/components/layout/Drawer';
@@ -12,7 +10,11 @@ import Tabs from '@/components/dashboard/Tabs';
 import AnnouncementForm from '@/components/dashboard/AnnouncementForm';
 import BranchTasksForm from '@/components/dashboard/BranchTasksForm';
 
-// Default modules for users without explicit permissions
+interface SearchResult {
+    name: string;
+    category: string;
+    path: string;
+}
 const DEFAULT_MODULES = [
     'Licenses',
     'Approvals',
@@ -27,19 +29,17 @@ const DEFAULT_MODULES = [
 ];
 
 export default function DashboardPage() {
-    const router = useRouter();
-    const { user, loading: userLoading } = useUser();
+    const { user } = useUser();
 
     const [showAnnouncementForm, setShowAnnouncementForm] = useState(false);
     const [showTasksForm, setShowTasksForm] = useState(false);
-    const [latestAnnouncement, setLatestAnnouncement] = useState(null);
+    const [latestAnnouncement, setLatestAnnouncement] = useState<{ id: string; title: string; message: string; created_at: string; created_by: string; creator_name?: string } | null>(null);
     const [refreshTrigger, setRefreshTrigger] = useState(0);
     const [hoveredButton, setHoveredButton] = useState<string | null>(null);
 
     // AppBar state
-    const [darkMode, setDarkMode] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
-    const [searchResults, setSearchResults] = useState([]);
+    const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
     const [mobileOpen, setMobileOpen] = useState(false);
     const [desktopOpen, setDesktopOpen] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
@@ -78,19 +78,9 @@ export default function DashboardPage() {
         );
     }, [registeredModules]);
 
-    // Loading state - now AFTER all hooks
-    if (userLoading) {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-gray-50">
-                <div className="flex flex-col items-center gap-4">
-                    <Loader2 className="w-10 h-10 animate-spin text-[#f15a22]" />
-                    <p className="text-gray-600">Loading...</p>
-                </div>
-            </div>
-        );
-    }
 
-    const handleAnnouncementAdded = (newAnnouncement: any) => {
+
+    const handleAnnouncementAdded = (newAnnouncement: { id: string; title: string; message: string; created_at: string; created_by: string; creator_name?: string }) => {
         setLatestAnnouncement(newAnnouncement);
         setRefreshTrigger((prev) => prev + 1);
     };
@@ -103,16 +93,9 @@ export default function DashboardPage() {
         }
     };
 
-    const handleDarkModeToggle = () => {
-        setDarkMode(!darkMode);
-        // TODO: Implement dark mode theme toggle
-    };
-
     return (
         <>
             <AppBar
-                darkMode={darkMode}
-                handleDarkModeToggle={handleDarkModeToggle}
                 searchQuery={searchQuery}
                 onSearch={handleSearch}
                 searchResults={searchResults}
@@ -236,11 +219,11 @@ export default function DashboardPage() {
                         <div className="ml-0 sm:ml-10 overflow-y-auto max-h-[60vh] sm:max-h-[calc(100vh-200px)] scrollbar-thin">
                             <Tabs
                                 latestAnnouncement={latestAnnouncement}
-                                userId={user?.id || ''}
-                                userZone={user?.zone || ''}
-                                userBranch={user?.branch || ''}
+                                _userId={user?.id || ''}
+                                _userZone={user?.zone || ''}
+                                _userBranch={user?.branch || ''}
                                 userBranchId={user?.branch_id || ''}
-                                userEmail={user?.email || ''}
+                                _userEmail={user?.email || ''}
                                 refreshTrigger={refreshTrigger}
                             />
                         </div>
@@ -248,19 +231,17 @@ export default function DashboardPage() {
                 </div>
 
                 {/* Announcement Form Modal */}
-                {showAnnouncementForm && user && (
+                {showAnnouncementForm && (
                     <AnnouncementForm
                         onClose={() => setShowAnnouncementForm(false)}
-                        user={{ name: user.name }}
                         onAnnouncementAdded={handleAnnouncementAdded}
                     />
                 )}
 
                 {/* Branch Tasks Form Modal */}
-                {showTasksForm && user && (
+                {showTasksForm && (
                     <BranchTasksForm
                         onClose={() => setShowTasksForm(false)}
-                        user={{ name: user.name }}
                         onTasksAdded={() => setRefreshTrigger(prev => prev + 1)}
                     />
                 )}

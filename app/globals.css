@@ -1,6 +1,8 @@
 @import "tailwindcss";
 
-/* Custom Fonts */
+/* Enable class-based dark mode for Tailwind v4 */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @font-face {
   font-family: 'TanseekModernW20';
   src: url('/fonts/TanseekModernW20-Bold.ttf') format('truetype');
@@ -28,8 +30,20 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --card-bg: #ffffff;
+  --card-border: #e5e7eb;
+  --muted: #6b7280;
   --font-heading: 'TanseekModernW20', system-ui, -apple-system, sans-serif;
   --font-body: 'Encode Sans', system-ui, -apple-system, sans-serif;
+}
+
+/* Dark mode - activated by 'dark' class on html element */
+html.dark {
+  --background: #000000;
+  --foreground: #ffffff;
+  --card-bg: #1a1a1a;
+  --card-border: #333333;
+  --muted: #a0a0a0;
 }
 
 @theme inline {
@@ -39,18 +53,12 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-body);
   font-size: 16px;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 /* Custom Dashboard Animations */

@@ -198,10 +198,10 @@ export default function DrawerComponent({
     };
 
     const drawerContent = (
-        <div className="h-full overflow-y-auto bg-white">
+        <div className="h-full overflow-y-auto bg-white dark:bg-[#1a1a1a]">
             {/* Toolbar spacer */}
             <div className="h-16" />
-            <div className="border-b border-gray-200" />
+            <div className="border-b border-gray-200 dark:border-gray-700" />
 
             {/* Menu items */}
             <nav className="py-2">
@@ -232,7 +232,7 @@ export default function DrawerComponent({
                                         }
                                     }
                                 }}
-                                className="w-full flex items-center py-3 text-gray-700 hover:bg-gray-100"
+                                className="w-full flex items-center py-3 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
                                 style={{
                                     paddingLeft: '20px', // Centers icon in 65px (20 + 24 icon + ~20 = 65)
                                     paddingRight: '16px',
@@ -271,14 +271,14 @@ export default function DrawerComponent({
 
                             {/* Submenu */}
                             {hasSubmenu && (desktopOpen || isMobile) && isOpen && (
-                                <div className="bg-gray-50">
+                                <div className="bg-gray-50 dark:bg-[#111]">
                                     {item.submenu
                                         ?.filter((sub) => hasAccess(item.text, sub.text))
                                         .map((sub) => (
                                             <button
                                                 key={sub.text}
                                                 onClick={() => handleNavigate(sub.path)}
-                                                className="w-full text-left pl-12 pr-4 py-2 text-sm text-gray-600 hover:bg-gray-100"
+                                                className="w-full text-left pl-12 pr-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                                             >
                                                 {sub.text}
                                             </button>
@@ -306,10 +306,9 @@ export default function DrawerComponent({
                     onClick={() => setMobileOpen(false)}
                 />
 
-                {/* Swipeable drawer */}
                 <div
                     className={`
-                        fixed top-0 left-0 bottom-0 z-50 bg-white
+                        fixed top-0 left-0 bottom-0 z-50 bg-white dark:bg-[#1a1a1a]
                         shadow-2xl
                         transform transition-transform duration-300
                         ${mobileOpen ? 'translate-x-0 ease-out' : '-translate-x-full ease-in'}
@@ -327,7 +326,7 @@ export default function DrawerComponent({
         <>
             {/* Single drawer - content always mounted for performance */}
             <div
-                className="fixed top-0 left-0 bottom-0 bg-white border-r border-gray-200 shadow-xl z-30 overflow-hidden"
+                className="fixed top-0 left-0 bottom-0 bg-white dark:bg-[#1a1a1a] border-r border-gray-200 dark:border-gray-700 shadow-xl z-30 overflow-hidden"
                 style={{
                     width: desktopOpen ? DRAWER_WIDTH : MINI_DRAWER_WIDTH,
                     transition: 'width 150ms ease-out',

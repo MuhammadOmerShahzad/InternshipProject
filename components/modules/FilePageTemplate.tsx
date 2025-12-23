@@ -5,6 +5,9 @@ import { RefreshCw, Loader2 } from 'lucide-react';
 import AppBar from '@/components/layout/AppBar';
 import Drawer from '@/components/layout/Drawer';
 import { SubModule } from '@/lib/config/moduleConfig';
+import { toast } from '@/lib/utils/toast';
+import { validateFiles } from '@/lib/utils/fileValidation';
+import { compressFiles } from '@/lib/utils/fileCompression';
 
 // Import shared components
 import { FileTable, AddFileButton, SearchBar, DeleteDialog } from '@/components/modules/shared';
@@ -44,7 +47,6 @@ interface FilePageTemplateProps {
 
 export default function FilePageTemplate({ title, subModule, user, moduleSlug, submoduleSlug }: FilePageTemplateProps) {
     // Layout state
-    const [darkMode, setDarkMode] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [mobileOpen, setMobileOpen] = useState(false);
     const [desktopOpen, setDesktopOpen] = useState(false);
@@ -64,13 +66,6 @@ export default function FilePageTemplate({ title, subModule, user, moduleSlug, s
     const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
     const [fileToDelete, setFileToDelete] = useState<{ id: string; filename: string } | null>(null);
 
-    // Snackbar state
-    const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; type: 'success' | 'error' | 'info' }>({
-        open: false,
-        message: '',
-        type: 'success',
-    });
-
     // Detect mobile
     useEffect(() => {
         const checkMobile = () => setIsMobile(window.innerWidth < 640);
@@ -88,12 +83,6 @@ export default function FilePageTemplate({ title, subModule, user, moduleSlug, s
         loadZones();
     }, []);
 
-    // Snackbar helper
-    const showSnackbar = useCallback((message: string, type: 'success' | 'error' | 'info') => {
-        setSnackbar({ open: true, message, type });
-        setTimeout(() => setSnackbar(prev => ({ ...prev, open: false })), 3000);
-    }, []);
-
     // Fetch files from database
     const fetchFiles = useCallback(async () => {
         if (!selectedZoneId || !selectedBranchId) return;
@@ -107,20 +96,20 @@ export default function FilePageTemplate({ title, subModule, user, moduleSlug, s
         );
 
         if (error) {
-            showSnackbar(`Error loading files: ${error}`, 'error');
+            toast.error(`Error loading files: ${error}`);
         } else {
             // Transform FileRecord to FileData format
-            const transformedFiles: FileData[] = fileData.map((file: FileRecord, index: number) => ({
+            const transformedFiles: FileData[] = fileData.map((file: FileRecord) => ({
                 fileId: file.id,
                 filename: file.original_filename,
                 filetype: file.file_type,
                 lastModified: file.created_at,
-                fileNumber: String(index + 1).padStart(5, '0'),
+                fileNumber: String(file.serial_number).padStart(5, '0'),
             }));
             setFiles(transformedFiles);
         }
         setLoading(false);
-    }, [selectedZoneId, selectedBranchId, moduleSlug, submoduleSlug, showSnackbar]);
+    }, [selectedZoneId, selectedBranchId, moduleSlug, submoduleSlug]);
 
     // Fetch branches when zone changes
     useEffect(() => {
@@ -161,72 +150,112 @@ export default function FilePageTemplate({ title, subModule, user, moduleSlug, s
     // Handle file upload
     const handleFileSelect = useCallback(async (selectedFiles: File[] | File) => {
         if (!selectedZoneId || !selectedBranchId) {
-            showSnackbar('Please select a zone and branch first', 'error');
+            toast.error('Please select a zone and branch first');
             return;
         }
 
         const filesArray = Array.isArray(selectedFiles) ? selectedFiles : [selectedFiles];
+
+        // Client-side validation
+        const { valid: validFiles, invalid: invalidFiles } = validateFiles(filesArray);
+
+        // Show validation errors immediately
+        if (invalidFiles.length > 0) {
+            invalidFiles.forEach(({ error: _validationError }) => {
+                toast.error(_validationError);
+            });
+
+            // If no valid files, return early
+            if (validFiles.length === 0) {
+                return;
+            }
+        }
+
         setUploading(true);
 
-        // Add optimistic files
-        const optimisticFiles: FileData[] = filesArray.map((file, index) => ({
+        // Compress files silently in background (images and PDFs only)
+        const compressionResults = await compressFiles(validFiles);
+        const processedFiles = compressionResults.map(result => result.compressedFile);
+
+        // Add optimistic files only for processed files
+        const optimisticFiles: FileData[] = processedFiles.map((file, index) => ({
             filename: file.name,
             lastModified: new Date().toISOString(),
-            fileNumber: String(files.length + index + 1).padStart(5, '0'),
+            fileNumber: '00000', // Placeholder, will be replaced after upload
             fileId: `temp-${Date.now()}-${index}`,
             isOptimistic: true,
         }));
         setFiles(prev => [...optimisticFiles, ...prev]);
 
-        let successCount = 0;
-        let errorCount = 0;
+        // Upload files in parallel (batches of 3)
+        const BATCH_SIZE = 3;
+        const uploadResults: { success: boolean; error?: string; filename: string }[] = [];
 
-        for (const file of filesArray) {
-            const formData = new FormData();
-            formData.append('file', file);
-            formData.append('moduleSlug', moduleSlug);
-            formData.append('submoduleSlug', submoduleSlug);
-            formData.append('zoneId', selectedZoneId);
-            formData.append('branchId', selectedBranchId);
+        for (let i = 0; i < processedFiles.length; i += BATCH_SIZE) {
+            const batch = processedFiles.slice(i, i + BATCH_SIZE);
 
-            const result = await uploadFile(formData);
-            if (result.success) {
-                successCount++;
-            } else {
-                errorCount++;
-                console.error('Upload error:', result.error);
-            }
+            const batchPromises = batch.map(async (file: File) => {
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('moduleSlug', moduleSlug);
+                formData.append('submoduleSlug', submoduleSlug);
+                formData.append('zoneId', selectedZoneId);
+                formData.append('branchId', selectedBranchId);
+
+                const result = await uploadFile(formData);
+                return {
+                    success: result.success,
+                    error: result.error,
+                    filename: file.name
+                };
+            });
+
+            const batchResults = await Promise.all(batchPromises);
+            uploadResults.push(...batchResults);
         }
 
         // Refresh files after upload
         await fetchFiles();
         setUploading(false);
 
+        // Count results
+        const successCount = uploadResults.filter(r => r.success).length;
+        const failedUploads = uploadResults.filter(r => !r.success);
+
+        // Show detailed success/error messages
         if (successCount > 0) {
-            showSnackbar(`Successfully uploaded ${successCount} file(s)`, 'success');
+            toast.success(`Successfully uploaded ${successCount} file(s)`);
         }
-        if (errorCount > 0) {
-            showSnackbar(`Failed to upload ${errorCount} file(s)`, 'error');
+
+        if (failedUploads.length > 0) {
+            // Show first error with details
+            const firstError = failedUploads[0];
+            toast.error(`Failed to upload "${firstError.filename}": ${firstError.error}`);
+
+            // If multiple failures, show count
+            if (failedUploads.length > 1) {
+                toast.error(`${failedUploads.length - 1} more file(s) failed to upload`);
+            }
         }
-    }, [files.length, selectedZoneId, selectedBranchId, moduleSlug, submoduleSlug, fetchFiles, showSnackbar]);
+    }, [selectedZoneId, selectedBranchId, moduleSlug, submoduleSlug, fetchFiles]);
 
     // Handle file view/download
     const handleViewFile = useCallback(async (filename: string) => {
         const file = files.find(f => f.filename === filename);
         if (!file?.fileId || file.fileId.startsWith('temp-')) {
-            showSnackbar('File is still uploading...', 'info');
+            toast.info('File is still uploading...');
             return;
         }
 
         const { url, error } = await getFileDownloadUrl(file.fileId);
         if (error) {
-            showSnackbar(`Error: ${error}`, 'error');
+            toast.error(`Error: ${error}`);
             return;
         }
         if (url) {
             window.open(url, '_blank');
         }
-    }, [files, showSnackbar]);
+    }, [files]);
 
     // Handle delete
     const openDeleteDialog = useCallback((filename: string) => {
@@ -245,12 +274,12 @@ export default function FilePageTemplate({ title, subModule, user, moduleSlug, s
 
         if (result.success) {
             setFiles(prev => prev.filter(f => f.fileId !== fileToDelete.id));
-            showSnackbar('File deleted successfully', 'success');
+            toast.success('File deleted successfully');
         } else {
-            showSnackbar(`Delete failed: ${result.error}`, 'error');
+            toast.error(`Delete failed: ${result.error}`);
         }
         setFileToDelete(null);
-    }, [fileToDelete, showSnackbar]);
+    }, [fileToDelete]);
 
     const handleDeleteCancel = useCallback(() => {
         setConfirmDeleteOpen(false);
@@ -259,18 +288,16 @@ export default function FilePageTemplate({ title, subModule, user, moduleSlug, s
 
     const handleRefresh = useCallback(() => {
         if (selectedZoneId && selectedBranchId) {
-            showSnackbar('Refreshing files...', 'info');
+            toast.info('Refreshing files...');
             fetchFiles();
         } else {
-            showSnackbar('Please select a zone and branch first', 'error');
+            toast.error('Please select a zone and branch first');
         }
-    }, [selectedZoneId, selectedBranchId, fetchFiles, showSnackbar]);
+    }, [selectedZoneId, selectedBranchId, fetchFiles]);
 
     return (
         <>
             <AppBar
-                darkMode={darkMode}
-                handleDarkModeToggle={() => setDarkMode(!darkMode)}
                 searchQuery={searchQuery}
                 onSearch={setSearchQuery}
                 searchResults={[]}
@@ -310,7 +337,7 @@ export default function FilePageTemplate({ title, subModule, user, moduleSlug, s
                 </p>
 
                 {/* Controls Container */}
-                <div className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 shadow-lg">
+                <div className="bg-white dark:bg-[#2E2E2E] rounded-xl p-4 sm:p-6 shadow-lg">
                     {/* Admin Controls */}
                     {user?.role === 'Admin' && (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
@@ -318,7 +345,7 @@ export default function FilePageTemplate({ title, subModule, user, moduleSlug, s
                             <select
                                 value={selectedZoneId}
                                 onChange={(e) => setSelectedZoneId(e.target.value)}
-                                className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#f15a22] focus:outline-none"
+                                className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#333] text-gray-900 dark:text-white focus:ring-2 focus:ring-[#f15a22] focus:outline-none"
                             >
                                 <option value="" disabled>Select Zone</option>
                                 {zones.map((zone) => (
@@ -333,7 +360,7 @@ export default function FilePageTemplate({ title, subModule, user, moduleSlug, s
                                 value={selectedBranchId}
                                 onChange={(e) => setSelectedBranchId(e.target.value)}
                                 disabled={!selectedZoneId}
-                                className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#f15a22] focus:outline-none disabled:opacity-50"
+                                className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-[#333] text-gray-900 dark:text-white focus:ring-2 focus:ring-[#f15a22] focus:outline-none disabled:opacity-50"
                             >
                                 <option value="" disabled>Select Branch</option>
                                 {branches.map((branch) => (
@@ -386,7 +413,7 @@ export default function FilePageTemplate({ title, subModule, user, moduleSlug, s
                     )}
 
                     {/* File Table */}
-                    <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 max-h-[500px] overflow-y-auto">
+                    <div className="bg-gray-50 dark:bg-[#1a1a1a] rounded-lg p-4 max-h-[500px] overflow-y-auto">
                         {loading ? (
                             <div className="flex items-center justify-center py-12">
                                 <Loader2 className="w-8 h-8 animate-spin text-[#f15a22]" />
@@ -415,19 +442,6 @@ export default function FilePageTemplate({ title, subModule, user, moduleSlug, s
                     onConfirm={handleDeleteConfirm}
                     onCancel={handleDeleteCancel}
                 />
-
-                {/* Snackbar */}
-                {snackbar.open && (
-                    <div
-                        className={`
-              fixed bottom-4 right-4 px-6 py-3 rounded-lg shadow-lg z-50
-              ${snackbar.type === 'success' ? 'bg-green-600' : snackbar.type === 'error' ? 'bg-red-600' : 'bg-blue-600'}
-              text-white font-medium animate-slideIn
-            `}
-                    >
-                        {snackbar.message}
-                    </div>
-                )}
             </main>
         </>
     );

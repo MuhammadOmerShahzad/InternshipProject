@@ -4,7 +4,7 @@ import { createServiceClient, createClient } from '@/lib/supabase/server';
 
 // Allowed file extensions
 const ALLOWED_EXTENSIONS = ['docx', 'pdf', 'jpeg', 'jpg', 'png', 'xlsx', 'xls', 'csv'];
-const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 export interface FileRecord {
     id: string;
@@ -15,6 +15,7 @@ export interface FileRecord {
     storage_path: string;
     module_slug: string;
     submodule_slug: string;
+    serial_number: number;
     zone_id: string;
     branch_id: string;
     uploaded_by: string;
@@ -97,6 +98,18 @@ export async function uploadFile(formData: FormData) {
 
     const zoneCode = zoneData?.code || 'UNKNOWN';
 
+    // Get the next serial number for this module/submodule
+    const { data: maxSerialData } = await serviceClient
+        .from('files')
+        .select('serial_number')
+        .eq('module_slug', moduleSlug)
+        .eq('submodule_slug', submoduleSlug)
+        .order('serial_number', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+    const nextSerialNumber = (maxSerialData?.serial_number || 0) + 1;
+
     // Generate unique storage path
     const timestamp = Date.now();
     const sanitizedFilename = sanitizeFilename(file.name);
@@ -126,6 +139,7 @@ export async function uploadFile(formData: FormData) {
             storage_path: storagePath,
             module_slug: moduleSlug,
             submodule_slug: submoduleSlug,
+            serial_number: nextSerialNumber,
             zone_id: zoneId,
             branch_id: branchId,
             uploaded_by: authUser.id,
@@ -166,7 +180,7 @@ export async function getFiles(
         .eq('submodule_slug', submoduleSlug)
         .eq('zone_id', zoneId)
         .eq('branch_id', branchId)
-        .order('created_at', { ascending: false });
+        .order('serial_number', { ascending: true });
 
     if (error) {
         console.error('Error fetching files:', error);

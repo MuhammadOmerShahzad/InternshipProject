@@ -8,6 +8,7 @@ import SearchBar from './SearchBar';
 import ProfileMenu from './ProfileMenu';
 import NotificationMenu from './NotificationMenu';
 import { notificationService, Notification } from '@/lib/services/notificationService';
+import { useTheme } from '@/lib/context/ThemeContext';
 
 interface User {
     name: string;
@@ -23,8 +24,6 @@ interface SearchResult {
 }
 
 interface AppBarProps {
-    darkMode?: boolean;
-    handleDarkModeToggle?: () => void;
     searchQuery?: string;
     onSearch?: (query: string) => void;
     searchResults?: SearchResult[];
@@ -36,8 +35,6 @@ interface AppBarProps {
 }
 
 export default function AppBar({
-    darkMode = false,
-    handleDarkModeToggle,
     searchQuery = '',
     onSearch = () => { },
     searchResults = [],
@@ -47,10 +44,12 @@ export default function AppBar({
     desktopOpen = false,
     setDesktopOpen = () => { },
 }: AppBarProps) {
+    const { theme, toggleTheme } = useTheme();
+    const darkMode = theme === 'dark';
     const [jumping, setJumping] = useState(false);
     const [rotating, setRotating] = useState(false);
     const [highlightedIcon, setHighlightedIcon] = useState<string | null>(null);
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
     const _unusedHighlightedIcon = highlightedIcon; // Keep for future use
     const [profileAnchorEl, setProfileAnchorEl] = useState<HTMLElement | null>(null);
     const [notificationAnchorEl, setNotificationAnchorEl] = useState<HTMLElement | null>(null);
@@ -122,7 +121,7 @@ export default function AppBar({
 
     const handleDarkModeClick = () => {
         triggerAnimation(setRotating);
-        handleDarkModeToggle?.();
+        toggleTheme();
     };
 
     const handleNotificationClick = (event: React.MouseEvent<HTMLButtonElement>) => {
@@ -257,7 +256,7 @@ export default function AppBar({
 
             {/* Notification Menu */}
             <NotificationMenu
-                anchorEl={notificationAnchorEl}
+                _anchorEl={notificationAnchorEl}
                 open={Boolean(notificationAnchorEl)}
                 onClose={() => setNotificationAnchorEl(null)}
                 notifications={notifications}
@@ -267,7 +266,7 @@ export default function AppBar({
 
             {/* Profile Menu */}
             <ProfileMenu
-                anchorEl={profileAnchorEl}
+                _anchorEl={profileAnchorEl}
                 isOpen={Boolean(profileAnchorEl)}
                 onClose={() => setProfileAnchorEl(null)}
                 user={user}

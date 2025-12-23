@@ -24,7 +24,7 @@ import AddBranchDrawer from '@/components/modules/user-management/AddBranchDrawe
 import EditBranchDrawer from '@/components/modules/user-management/EditBranchDrawer';
 
 export default function UserManagementPage() {
-    const { user: currentUser, loading: userLoading } = useUser();
+    const { user: _currentUser, loading: userLoading } = useUser();
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
@@ -109,13 +109,6 @@ export default function UserManagementPage() {
             setNotification({ type: 'success', message: `Password reset! New password: ${password}` });
             fetchUsers();
         }
-    };
-
-    // Handle copy password
-    const handleCopyPassword = (password: string) => {
-        navigator.clipboard.writeText(password);
-        setCopiedPassword(password);
-        setTimeout(() => setCopiedPassword(null), 2000);
     };
 
     // Handle edit menu

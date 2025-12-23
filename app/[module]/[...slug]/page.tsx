@@ -24,10 +24,9 @@ interface ModulePageProps {
 }
 
 export default function ModuleCatchAllPage({ params }: ModulePageProps) {
-    const router = useRouter();
-    const { user, loading: userLoading } = useUser();
+    const _router = useRouter();
+    const { user, loading: _userLoading } = useUser();
     const [resolvedParams, setResolvedParams] = useState<{ module: string; slug?: string[] } | null>(null);
-    const [darkMode, setDarkMode] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [mobileOpen, setMobileOpen] = useState(false);
     const [desktopOpen, setDesktopOpen] = useState(false);
@@ -91,8 +90,6 @@ export default function ModuleCatchAllPage({ params }: ModulePageProps) {
     return (
         <>
             <AppBar
-                darkMode={darkMode}
-                handleDarkModeToggle={() => setDarkMode(!darkMode)}
                 searchQuery={searchQuery}
                 onSearch={setSearchQuery}
                 searchResults={[]}

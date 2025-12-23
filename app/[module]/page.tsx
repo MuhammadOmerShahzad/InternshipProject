@@ -16,9 +16,8 @@ interface ModulePageProps {
 }
 
 export default function ModuleMainPage({ params }: ModulePageProps) {
-    const { user, loading: userLoading } = useUser();
+    const { user, loading: _userLoading } = useUser();
     const [resolvedParams, setResolvedParams] = useState<{ module: string } | null>(null);
-    const [darkMode, setDarkMode] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [mobileOpen, setMobileOpen] = useState(false);
     const [desktopOpen, setDesktopOpen] = useState(false);
@@ -58,8 +57,6 @@ export default function ModuleMainPage({ params }: ModulePageProps) {
     return (
         <>
             <AppBar
-                darkMode={darkMode}
-                handleDarkModeToggle={() => setDarkMode(!darkMode)}
                 searchQuery={searchQuery}
                 onSearch={setSearchQuery}
                 searchResults={[]}

@@ -20,17 +20,18 @@ export default function AddBranchDrawer({ open, onClose, onBranchAdded }: AddBra
     const [showConfirm, setShowConfirm] = useState(false);
     const [error, setError] = useState('');
 
+    const fetchZones = async () => {
+        const { zones: fetchedZones } = await getZones();
+        setZones(fetchedZones);
+    };
+
     // Fetch zones
     useEffect(() => {
         if (open) {
             fetchZones();
         }
+         
     }, [open]);
-
-    const fetchZones = async () => {
-        const { zones: fetchedZones } = await getZones();
-        setZones(fetchedZones);
-    };
 
     const handleAddBranch = () => {
         if (!selectedZoneId || !branchName.trim()) {

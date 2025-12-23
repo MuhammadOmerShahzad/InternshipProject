@@ -5,15 +5,11 @@ import { getUserTasks, toggleTaskCompletion, Task } from '@/lib/actions/tasks';
 import { Loader2 } from 'lucide-react';
 
 interface TodoListProps {
-    userId?: string;
-    userZone?: string;
-    userBranch?: string;
     userBranchId?: string;
-    userEmail?: string;
     refreshTrigger?: number;
 }
 
-export default function TodoList({ userId, userZone, userBranch, userBranchId, userEmail, refreshTrigger }: TodoListProps) {
+export default function TodoList({ userBranchId, refreshTrigger }: TodoListProps) {
     const [tasks, setTasks] = useState<Task[]>([]);
     const [loading, setLoading] = useState(true);
 

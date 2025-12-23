@@ -118,17 +118,17 @@ export default function FileTable({
     onDelete,
     onView,
     user,
-    filePathPrefix = 'FILES'
+    filePathPrefix = 'FILE'
 }: FileTableProps) {
     return (
-        <div className="w-full overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
-            <table className="w-full min-w-[600px] border-collapse">
-                <thead>
-                    <tr className="bg-gray-100 dark:bg-[#424242]">
+        <div className="overflow-x-auto bg-white dark:bg-gray-800 rounded-xl shadow-lg">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead className="bg-gray-100 dark:bg-gray-700">
+                    <tr>
                         {TABLE_HEADERS.map((header) => (
                             <th
                                 key={header}
-                                className="px-3 py-3 text-center text-sm font-bold text-gray-900 dark:text-white"
+                                className="px-3 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
                             >
                                 {header}
                             </th>

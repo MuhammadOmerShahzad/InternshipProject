@@ -47,9 +47,20 @@ export default function EditUserDrawer({ open, onClose, user, onUserUpdated }: E
                 branchId: user.branch_id || '',
             });
         }
-    }, [user]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [user?.id]);
 
-    // Fetch zones
+    const fetchZones = async () => {
+        const { zones: fetchedZones } = await getZones();
+        setZones(fetchedZones);
+    };
+
+    const fetchBranches = async (zoneId: string) => {
+        const { branches: fetchedBranches } = await getBranchesByZone(zoneId);
+        setBranches(fetchedBranches);
+    };
+
+    //Fetch zones
     useEffect(() => {
         if (open) {
             fetchZones();
@@ -64,16 +75,6 @@ export default function EditUserDrawer({ open, onClose, user, onUserUpdated }: E
             setBranches([]);
         }
     }, [formData.zoneId]);
-
-    const fetchZones = async () => {
-        const { zones: fetchedZones } = await getZones();
-        setZones(fetchedZones);
-    };
-
-    const fetchBranches = async (zoneId: string) => {
-        const { branches: fetchedBranches } = await getBranchesByZone(zoneId);
-        setBranches(fetchedBranches);
-    };
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;

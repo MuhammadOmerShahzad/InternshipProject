@@ -23,7 +23,7 @@ export default function SearchBar({
                 placeholder={placeholder}
                 className="
           w-full pl-10 pr-4 py-2 rounded-lg
-          bg-white dark:bg-gray-800
+          bg-white dark:bg-[#333]
           border border-gray-300 dark:border-gray-600
           text-gray-900 dark:text-white
           placeholder-gray-400

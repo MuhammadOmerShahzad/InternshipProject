@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import localFont from "next/font/local";
 import { UserProvider } from "@/lib/context/UserContext";
+import { ThemeProvider } from "@/lib/context/ThemeContext";
+import { Toaster } from "sonner";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -30,13 +32,33 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${cocon.variable} antialiased`}
+        suppressHydrationWarning
       >
-        <UserProvider>
-          {children}
-        </UserProvider>
+        <ThemeProvider>
+          <UserProvider>
+            {children}
+          </UserProvider>
+        </ThemeProvider>
+        <Toaster
+          position="bottom-right"
+          expand={false}
+          richColors
+          closeButton
+          toastOptions={{
+            style: {
+              borderRadius: '0.5rem',
+            },
+            classNames: {
+              success: 'border-green-500',
+              error: 'border-red-500',
+              info: 'border-blue-500',
+              warning: 'border-orange-500',
+            },
+          }}
+        />
       </body>
     </html>
   );
