@@ -22,6 +22,8 @@ export default function EditUserDrawer({ open, onClose, user, onUserUpdated }: E
     const [loading, setLoading] = useState(false);
     const [zones, setZones] = useState<Zone[]>([]);
     const [branches, setBranches] = useState<Branch[]>([]);
+    const [isVisible, setIsVisible] = useState(false);
+    const [shouldAnimate, setShouldAnimate] = useState(false);
 
     const [formData, setFormData] = useState({
         firstName: '',
@@ -60,10 +62,20 @@ export default function EditUserDrawer({ open, onClose, user, onUserUpdated }: E
         setBranches(fetchedBranches);
     };
 
-    //Fetch zones
+    // Handle animations and fetch zones
     useEffect(() => {
         if (open) {
+            setIsVisible(true);
             fetchZones();
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    setShouldAnimate(true);
+                });
+            });
+        } else {
+            setShouldAnimate(false);
+            const timer = setTimeout(() => setIsVisible(false), 300);
+            return () => clearTimeout(timer);
         }
     }, [open]);
 
@@ -120,22 +132,32 @@ export default function EditUserDrawer({ open, onClose, user, onUserUpdated }: E
         }
     };
 
-    if (!open) return null;
+    if (!isVisible) return null;
 
     return (
-        <>
+        <div className={`fixed inset-0 z-50 flex justify-end items-center pointer-events-none transition-all duration-300 ${shouldAnimate ? 'visible' : 'invisible'}`}>
             {/* Backdrop */}
             <div
-                className="fixed inset-0 bg-black/50 z-40 transition-opacity duration-300"
+                className={`
+                    absolute inset-0 bg-black/30 backdrop-blur-sm pointer-events-auto 
+                    transition-opacity duration-300 ease-in-out
+                    ${shouldAnimate ? 'opacity-100' : 'opacity-0'}
+                `}
                 onClick={onClose}
             />
 
-            {/* Drawer */}
-            <div className="fixed right-0 top-0 bottom-0 w-full md:w-[500px] bg-white z-50 shadow-2xl flex flex-col">
+            {/* Floating Drawer Modal */}
+            <div className={`
+                relative w-full max-w-[40vw] min-w-[500px] h-[96vh] mr-4 
+                bg-white dark:bg-[#1a1a1a] rounded-2xl shadow-2xl pointer-events-auto
+                flex flex-col overflow-hidden
+                transform transition-all duration-300 cubic-bezier(0.4, 0, 0.2, 1)
+                ${shouldAnimate ? 'translate-x-0 opacity-100' : 'translate-x-[110%] opacity-0'}
+            `}>
                 {/* Header */}
-                <div className="flex items-center justify-between p-4 border-b">
-                    <h2 className="text-xl font-bold">Edit User Details</h2>
-                    <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg">
+                <div className="flex items-center justify-between p-4 border-b dark:border-gray-700">
+                    <h2 className="text-xl font-bold dark:text-white">Edit User Details</h2>
+                    <button onClick={onClose} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg dark:text-gray-400">
                         <X size={20} />
                     </button>
                 </div>
@@ -145,56 +167,56 @@ export default function EditUserDrawer({ open, onClose, user, onUserUpdated }: E
                     <div className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-medium mb-1">First Name</label>
+                                <label className="block text-sm font-medium mb-1 dark:text-gray-300">First Name</label>
                                 <input
                                     type="text"
                                     name="firstName"
                                     value={formData.firstName}
                                     onChange={handleInputChange}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#f15a22]"
+                                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:border-[#f15a22] bg-white dark:bg-gray-800 dark:text-white"
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium mb-1">Last Name</label>
+                                <label className="block text-sm font-medium mb-1 dark:text-gray-300">Last Name</label>
                                 <input
                                     type="text"
                                     name="lastName"
                                     value={formData.lastName}
                                     onChange={handleInputChange}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#f15a22]"
+                                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:border-[#f15a22] bg-white dark:bg-gray-800 dark:text-white"
                                 />
                             </div>
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium mb-1">Display Name</label>
+                            <label className="block text-sm font-medium mb-1 dark:text-gray-300">Display Name</label>
                             <input
                                 type="text"
                                 name="displayName"
                                 value={formData.displayName}
                                 onChange={handleInputChange}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#f15a22]"
+                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:border-[#f15a22] bg-white dark:bg-gray-800 dark:text-white"
                             />
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium mb-1">Email</label>
+                            <label className="block text-sm font-medium mb-1 dark:text-gray-300">Email</label>
                             <input
                                 type="email"
                                 name="email"
                                 value={formData.email}
                                 disabled
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600"
+                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400"
                             />
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium mb-1">Role</label>
+                            <label className="block text-sm font-medium mb-1 dark:text-gray-300">Role</label>
                             <select
                                 name="role"
                                 value={formData.role}
                                 onChange={handleInputChange}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#f15a22]"
+                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:border-[#f15a22] bg-white dark:bg-gray-800 dark:text-white"
                             >
                                 <option value="">Select a role</option>
                                 {ALL_ROLES.map((role) => (
@@ -204,12 +226,12 @@ export default function EditUserDrawer({ open, onClose, user, onUserUpdated }: E
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium mb-1">Zone</label>
+                            <label className="block text-sm font-medium mb-1 dark:text-gray-300">Zone</label>
                             <select
                                 name="zoneId"
                                 value={formData.zoneId}
                                 onChange={handleInputChange}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#f15a22]"
+                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:border-[#f15a22] bg-white dark:bg-gray-800 dark:text-white"
                             >
                                 <option value="">Select a zone</option>
                                 {zones.map((zone) => (
@@ -219,12 +241,12 @@ export default function EditUserDrawer({ open, onClose, user, onUserUpdated }: E
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium mb-1">Branch</label>
+                            <label className="block text-sm font-medium mb-1 dark:text-gray-300">Branch</label>
                             <select
                                 name="branchId"
                                 value={formData.branchId}
                                 onChange={handleInputChange}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-[#f15a22]"
+                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:border-[#f15a22] bg-white dark:bg-gray-800 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-700"
                                 disabled={!formData.zoneId}
                             >
                                 <option value="">{branches.length === 0 ? 'No branches available' : 'Select a branch'}</option>
@@ -237,10 +259,10 @@ export default function EditUserDrawer({ open, onClose, user, onUserUpdated }: E
                 </div>
 
                 {/* Footer */}
-                <div className="flex items-center justify-end gap-2 p-4 border-t">
+                <div className="flex items-center justify-end gap-2 p-4 border-t dark:border-gray-700 dark:bg-gray-800/50">
                     <button
                         onClick={onClose}
-                        className="px-4 py-2 text-[#f15a22] hover:bg-orange-50 rounded-lg transition-colors"
+                        className="px-4 py-2 text-[#f15a22] hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-lg transition-colors"
                     >
                         Cancel
                     </button>
@@ -253,6 +275,6 @@ export default function EditUserDrawer({ open, onClose, user, onUserUpdated }: E
                     </button>
                 </div>
             </div>
-        </>
+        </div>
     );
 }

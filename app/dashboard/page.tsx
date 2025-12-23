@@ -99,7 +99,7 @@ export default function DashboardPage() {
             />
 
             <main
-                className="flex-grow p-4 sm:p-4 mt-16 overflow-y-auto h-screen scrollbar-thin"
+                className="flex-grow p-4 sm:p-4 mt-16 overflow-hidden"
                 style={{
                     marginLeft: !isMobile ? '65px' : '0px', // Always 65px on desktop for mini drawer
                     paddingLeft: !isMobile ? '1rem' : '0',

@@ -34,9 +34,15 @@ export default function AppBar({
 }: AppBarProps) {
     const { theme, toggleTheme } = useTheme();
     const darkMode = theme === 'dark';
+    const [mounted, setMounted] = useState(false);
     const [jumping, setJumping] = useState(false);
     const [rotating, setRotating] = useState(false);
     const [highlightedIcon, setHighlightedIcon] = useState<string | null>(null);
+
+    // Prevent hydration mismatch by waiting for mount
+    useEffect(() => {
+        setMounted(true);
+    }, []);
 
     const _unusedHighlightedIcon = highlightedIcon; // Keep for future use
     const [profileAnchorEl, setProfileAnchorEl] = useState<HTMLElement | null>(null);
@@ -190,11 +196,11 @@ export default function AppBar({
                                 }`}
                             aria-label="Toggle Dark Mode"
                         >
-                            {darkMode ? (
+                            {mounted && (darkMode ? (
                                 <Sun className="w-6 h-6" />
                             ) : (
                                 <Moon className="w-6 h-6" />
-                            )}
+                            ))}
                         </button>
 
                         {/* Notifications */}

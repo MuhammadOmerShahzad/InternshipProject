@@ -83,6 +83,8 @@ export async function getAllBranches() {
 export async function addBranch(zoneId: string, branchName: string) {
     const supabase = createServiceClient();
 
+    console.log('[addBranch] Adding branch:', { zoneId, branchName });
+
     const { data, error } = await supabase
         .from('branches')
         .insert({
@@ -93,9 +95,16 @@ export async function addBranch(zoneId: string, branchName: string) {
         .single();
 
     if (error) {
-        console.error('Error adding branch:', error);
+        console.error('[addBranch] Error:', error);
         return { branch: null, error: error.message };
     }
+
+    console.log('[addBranch] Success:', data);
+
+    // Revalidate paths that might display branch data
+    const { revalidatePath } = await import('next/cache');
+    revalidatePath('/user-management');
+    revalidatePath('/');
 
     return { branch: data, error: null };
 }
@@ -103,20 +112,34 @@ export async function addBranch(zoneId: string, branchName: string) {
 /**
  * Update branch name
  */
-export async function updateBranch(branchId: string, newName: string) {
+export async function updateBranch(branchId: string, newName: string, zoneId?: string) {
     const supabase = createServiceClient();
+
+    console.log('[updateBranch] Updating branch:', { branchId, newName, zoneId });
+
+    const updateData: { name: string; zone_id?: string } = { name: newName };
+    if (zoneId) {
+        updateData.zone_id = zoneId;
+    }
 
     const { data, error } = await supabase
         .from('branches')
-        .update({ name: newName })
+        .update(updateData)
         .eq('id', branchId)
         .select()
         .single();
 
     if (error) {
-        console.error('Error updating branch:', error);
+        console.error('[updateBranch] Error:', error);
         return { branch: null, error: error.message };
     }
+
+    console.log('[updateBranch] Success:', data);
+
+    // Revalidate paths that might display branch data
+    const { revalidatePath } = await import('next/cache');
+    revalidatePath('/user-management');
+    revalidatePath('/');
 
     return { branch: data, error: null };
 }

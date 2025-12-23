@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { SubModule } from '@/lib/config/moduleConfig';
 
@@ -69,10 +70,12 @@ export default function SubModulesGrid({ subModules, basePath, user }: SubModule
                             {/* Module Header */}
                             <div className="flex flex-col items-center w-full text-center mb-2">
                                 <div className="relative w-10 h-10 mb-2 flex items-center justify-center">
-                                    <img
-                                        src="/images/folder.webp"
+                                    <Image
+                                        src="/images/icons/folder.webp"
                                         alt="folder"
-                                        className="w-8 h-8 object-contain"
+                                        width={32}
+                                        height={32}
+                                        className="object-contain"
                                     />
                                 </div>
                                 <span

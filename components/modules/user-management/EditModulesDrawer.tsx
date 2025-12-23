@@ -15,6 +15,24 @@ interface EditModulesDrawerProps {
 export default function EditModulesDrawer({ open, onClose, user, onModulesUpdated }: EditModulesDrawerProps) {
     const [loading, setLoading] = useState(false);
     const [checkedModules, setCheckedModules] = useState<Record<string, boolean>>({});
+    const [isVisible, setIsVisible] = useState(false);
+    const [shouldAnimate, setShouldAnimate] = useState(false);
+
+    // Initialize checked modules and handle animations
+    useEffect(() => {
+        if (open) {
+            setIsVisible(true);
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    setShouldAnimate(true);
+                });
+            });
+        } else {
+            setShouldAnimate(false);
+            const timer = setTimeout(() => setIsVisible(false), 300);
+            return () => clearTimeout(timer);
+        }
+    }, [open]);
 
     // Initialize checked modules from user data
     useEffect(() => {
@@ -78,22 +96,32 @@ export default function EditModulesDrawer({ open, onClose, user, onModulesUpdate
         }
     };
 
-    if (!open) return null;
+    if (!isVisible) return null;
 
     return (
-        <>
+        <div className={`fixed inset-0 z-50 flex justify-end items-center pointer-events-none transition-all duration-300 ${shouldAnimate ? 'visible' : 'invisible'}`}>
             {/* Backdrop */}
             <div
-                className="fixed inset-0 bg-black/50 z-40 transition-opacity duration-300"
+                className={`
+                    absolute inset-0 bg-black/30 backdrop-blur-sm pointer-events-auto 
+                    transition-opacity duration-300 ease-in-out
+                    ${shouldAnimate ? 'opacity-100' : 'opacity-0'}
+                `}
                 onClick={onClose}
             />
 
-            {/* Drawer */}
-            <div className="fixed right-0 top-0 bottom-0 w-full md:w-[500px] bg-white z-50 shadow-2xl flex flex-col">
+            {/* Floating Drawer Modal */}
+            <div className={`
+                relative w-full max-w-[40vw] min-w-[500px] h-[96vh] mr-4 
+                bg-white dark:bg-[#1a1a1a] rounded-2xl shadow-2xl pointer-events-auto
+                flex flex-col overflow-hidden
+                transform transition-all duration-300 cubic-bezier(0.4, 0, 0.2, 1)
+                ${shouldAnimate ? 'translate-x-0 opacity-100' : 'translate-x-[110%] opacity-0'}
+            `}>
                 {/* Header */}
-                <div className="flex items-center justify-between p-4 border-b">
-                    <h2 className="text-xl font-bold">Edit Assigned Modules</h2>
-                    <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg">
+                <div className="flex items-center justify-between p-4 border-b dark:border-gray-700">
+                    <h2 className="text-xl font-bold dark:text-white">Edit Assigned Modules</h2>
+                    <button onClick={onClose} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg dark:text-gray-400">
                         <X size={20} />
                     </button>
                 </div>
@@ -101,8 +129,8 @@ export default function EditModulesDrawer({ open, onClose, user, onModulesUpdate
                 {/* Content */}
                 <div className="flex-1 p-6 overflow-y-auto">
                     {user && (
-                        <p className="text-sm text-gray-600 mb-4">
-                            Editing modules for: <span className="font-semibold">{user.name}</span>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                            Editing modules for: <span className="font-semibold dark:text-white">{user.name}</span>
                         </p>
                     )}
 
@@ -117,11 +145,11 @@ export default function EditModulesDrawer({ open, onClose, user, onModulesUpdate
                                 : false;
 
                             return (
-                                <div key={module.name} className="border rounded-lg overflow-hidden">
-                                    <div className="flex items-center gap-2 p-3 bg-gray-50">
+                                <div key={module.name} className="border dark:border-gray-700 rounded-lg overflow-hidden">
+                                    <div className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-800">
                                         <input
                                             type="checkbox"
-                                            checked={allChecked}
+                                            checked={!!allChecked}
                                             ref={(el) => {
                                                 if (el) el.indeterminate = !allChecked && someChecked;
                                             }}
@@ -131,9 +159,9 @@ export default function EditModulesDrawer({ open, onClose, user, onModulesUpdate
                                         <span className="font-semibold text-[#f15a22]">{module.name}</span>
                                     </div>
                                     {hasSubModules && (
-                                        <div className="p-3 pl-8 space-y-2">
+                                        <div className="p-3 pl-8 space-y-2 dark:bg-[#1a1a1a]">
                                             {module.subModules.map((sub) => (
-                                                <label key={sub.name} className="flex items-center gap-2">
+                                                <label key={sub.name} className="flex items-center gap-2 dark:text-gray-300">
                                                     <input
                                                         type="checkbox"
                                                         checked={!!checkedModules[`${module.name}_${sub.name}`]}
@@ -152,10 +180,10 @@ export default function EditModulesDrawer({ open, onClose, user, onModulesUpdate
                 </div>
 
                 {/* Footer */}
-                <div className="flex items-center justify-end gap-2 p-4 border-t">
+                <div className="flex items-center justify-end gap-2 p-4 border-t dark:border-gray-700 dark:bg-gray-800/50">
                     <button
                         onClick={onClose}
-                        className="px-4 py-2 text-[#f15a22] hover:bg-orange-50 rounded-lg transition-colors"
+                        className="px-4 py-2 text-[#f15a22] hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-lg transition-colors"
                     >
                         Cancel
                     </button>
@@ -168,6 +196,6 @@ export default function EditModulesDrawer({ open, onClose, user, onModulesUpdate
                     </button>
                 </div>
             </div>
-        </>
+        </div>
     );
 }
