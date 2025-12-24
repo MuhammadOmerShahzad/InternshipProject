@@ -6,10 +6,12 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { login } from '@/lib/actions/auth';
+import { useUser } from '@/lib/context/UserContext';
 
 function LoginForm() {
     const router = useRouter();
     const searchParams = useSearchParams();
+    const { refreshUser } = useUser();
     const redirectTo = searchParams.get('redirectTo') || '/dashboard';
     const reason = searchParams.get('reason');
 
@@ -42,6 +44,8 @@ function LoginForm() {
             const result = await login(email, password);
 
             if (result.success) {
+                // Refresh user context to load user data immediately
+                await refreshUser();
                 router.push(redirectTo);
                 router.refresh();
             } else {

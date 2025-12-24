@@ -23,8 +23,12 @@ const cocon = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Muawin - Business Management Platform",
+  title: "Muawin",
   description: "Streamline your business operations with Muawin",
+  icons: {
+    icon: "/images/logos/muawin_monogram.png",
+    apple: "/images/logos/muawin_monogram.png",
+  },
 };
 
 export default function RootLayout({

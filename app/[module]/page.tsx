@@ -8,6 +8,7 @@ import Banner from '@/components/dashboard/Banner';
 import SubModulesGrid from '@/components/modules/SubModulesGrid';
 import { getModuleBySlug } from '@/lib/config/moduleConfig';
 import { useUser } from '@/lib/context/UserContext';
+import LoadingScreen from '@/components/ui/LoadingScreen';
 
 interface ModulePageProps {
     params: Promise<{
@@ -16,7 +17,7 @@ interface ModulePageProps {
 }
 
 export default function ModuleMainPage({ params }: ModulePageProps) {
-    const { user, loading: _userLoading } = useUser();
+    const { user, loading: userLoading } = useUser();
     const [resolvedParams, setResolvedParams] = useState<{ module: string } | null>(null);
     const [mobileOpen, setMobileOpen] = useState(false);
     const [desktopOpen, setDesktopOpen] = useState(false);
@@ -35,12 +36,8 @@ export default function ModuleMainPage({ params }: ModulePageProps) {
         return () => window.removeEventListener('resize', checkMobile);
     }, []);
 
-    if (!resolvedParams) {
-        return (
-            <div className="flex items-center justify-center min-h-screen">
-                <div className="animate-spin w-8 h-8 border-4 border-[#f15a22] border-t-transparent rounded-full" />
-            </div>
-        );
+    if (!resolvedParams || userLoading) {
+        return <LoadingScreen />;
     }
 
     const { module: moduleSlug } = resolvedParams;

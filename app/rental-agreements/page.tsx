@@ -4,21 +4,18 @@ import { useState, useEffect } from 'react';
 import { useUser } from '@/lib/context/UserContext';
 import FilePageTemplate from '@/components/modules/FilePageTemplate';
 import { getModuleBySlug } from '@/lib/config/moduleConfig';
+import LoadingScreen from '@/components/ui/LoadingScreen';
 
 export default function RentalAgreementsPage() {
-    const { user } = useUser();
+    const { user, loading } = useUser();
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
         setMounted(true);
     }, []);
 
-    if (!mounted) {
-        return (
-            <div className="flex items-center justify-center min-h-screen">
-                <div className="animate-spin w-8 h-8 border-4 border-[#f15a22] border-t-transparent rounded-full" />
-            </div>
-        );
+    if (!mounted || loading) {
+        return <LoadingScreen />;
     }
 
     const moduleConfig = getModuleBySlug('rental-agreements');

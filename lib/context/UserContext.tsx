@@ -45,16 +45,13 @@ export function UserProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<AppUser | null>(null);
     const [supabaseUser, setSupabaseUser] = useState<SupabaseUser | null>(null);
     const [loading, setLoading] = useState(true);
-    const [supabase, setSupabase] = useState<ReturnType<typeof createClient>>(null);
+    // Create Supabase client synchronously using lazy initializer (avoids race conditions)
+    const [supabase] = useState(() => createClient());
     const isRefreshing = useRef(false);
     const retryCount = useRef(0);
     const MAX_RETRIES = 2;
-
-    // Create Supabase client on mount (client-side only)
-    useEffect(() => {
-        const client = createClient();
-        setSupabase(client);
-    }, []);
+    // Track if auth listener has completed initial check
+    const authListenerReady = useRef(false);
 
     // Fetch user profile from server action
     const fetchUserProfile = useCallback(async (authUser: SupabaseUser): Promise<void> => {
@@ -187,28 +184,53 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
         let mounted = true;
 
-        const initialize = async () => {
-            // console.log('🚀 [UserContext] Initializing...');
-            setLoading(true);
-
+        // Immediately check for existing session (don't wait for event)
+        const initializeSession = async () => {
+            // console.log('🚀 [UserContext] Initializing session...');
             try {
-                await refreshUser();
+                const { data: { user: authUser }, error } = await supabase.auth.getUser();
+
+                if (!mounted) return;
+
+                if (error || !authUser) {
+                    // console.log('⚠️ [UserContext] No existing session');
+                    setUser(null);
+                    setSupabaseUser(null);
+                    setLoading(false);
+                    return;
+                }
+
+                // console.log('✅ [UserContext] Found existing session:', authUser.email);
+                setSupabaseUser(authUser);
+                retryCount.current = 0;
+
+                await fetchUserProfile(authUser);
+            } catch (err) {
+                console.error('❌ [UserContext] Error initializing session:', err);
+                setUser(null);
+                setSupabaseUser(null);
             } finally {
                 if (mounted) {
                     setLoading(false);
-                    // console.log('✅ [UserContext] Initialization complete');
+                    authListenerReady.current = true;
                 }
             }
         };
 
-        initialize();
+        // Start session check immediately
+        initializeSession();
 
-        // Auth state listener
+        // Set up auth listener for subsequent auth changes (login/logout/token refresh)
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
             async (event: string, session: { user: SupabaseUser } | null) => {
                 // console.log('🔔 [UserContext] Auth event:', event, session?.user?.email);
 
                 if (!mounted) return;
+
+                // Skip INITIAL_SESSION since we handle it above
+                if (event === 'INITIAL_SESSION') {
+                    return;
+                }
 
                 if (event === 'SIGNED_IN' && session?.user) {
                     // console.log('✅ [UserContext] Signed in, fetching profile...');
@@ -219,7 +241,9 @@ export function UserProvider({ children }: { children: ReactNode }) {
                     try {
                         await fetchUserProfile(session.user);
                     } finally {
-                        if (mounted) setLoading(false);
+                        if (mounted) {
+                            setLoading(false);
+                        }
                     }
 
                 } else if (event === 'SIGNED_OUT') {
@@ -239,7 +263,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
             mounted = false;
             subscription.unsubscribe();
         };
-    }, [supabase, refreshUser, fetchUserProfile]);
+    }, [supabase, fetchUserProfile]);
 
     return (
         <UserContext.Provider value={{ user, supabaseUser, loading, refreshUser }}>

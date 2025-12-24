@@ -6,12 +6,13 @@ import { redirect } from 'next/navigation'
 export interface LoginResult {
     success: boolean
     error?: string
+    userId?: string
 }
 
 export async function login(email: string, password: string): Promise<LoginResult> {
     const supabase = await createClient()
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
     })
@@ -20,7 +21,7 @@ export async function login(email: string, password: string): Promise<LoginResul
         return { success: false, error: error.message }
     }
 
-    return { success: true }
+    return { success: true, userId: data.user?.id }
 }
 
 export async function logout() {

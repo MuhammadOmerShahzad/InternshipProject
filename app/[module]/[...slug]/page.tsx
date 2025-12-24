@@ -15,6 +15,7 @@ import {
     generatePageTitle
 } from '@/lib/config/moduleConfig';
 import { useUser } from '@/lib/context/UserContext';
+import LoadingScreen from '@/components/ui/LoadingScreen';
 
 interface ModulePageProps {
     params: Promise<{
@@ -25,7 +26,7 @@ interface ModulePageProps {
 
 export default function ModuleCatchAllPage({ params }: ModulePageProps) {
     const _router = useRouter();
-    const { user, loading: _userLoading } = useUser();
+    const { user, loading: userLoading } = useUser();
     const [resolvedParams, setResolvedParams] = useState<{ module: string; slug?: string[] } | null>(null);
     const [mobileOpen, setMobileOpen] = useState(false);
     const [desktopOpen, setDesktopOpen] = useState(false);
@@ -44,13 +45,9 @@ export default function ModuleCatchAllPage({ params }: ModulePageProps) {
         return () => window.removeEventListener('resize', checkMobile);
     }, []);
 
-    // Wait for params to resolve
-    if (!resolvedParams) {
-        return (
-            <div className="flex items-center justify-center min-h-screen">
-                <div className="animate-spin w-8 h-8 border-4 border-[#f15a22] border-t-transparent rounded-full" />
-            </div>
-        );
+    // Wait for params to resolve or user to load
+    if (!resolvedParams || userLoading) {
+        return <LoadingScreen />;
     }
 
     const { module: moduleSlug, slug = [] } = resolvedParams;

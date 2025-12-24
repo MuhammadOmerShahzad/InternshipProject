@@ -23,6 +23,7 @@ import EditUserDrawer from '@/components/modules/user-management/EditUserDrawer'
 import EditModulesDrawer from '@/components/modules/user-management/EditModulesDrawer';
 import AddBranchDrawer from '@/components/modules/user-management/AddBranchDrawer';
 import EditBranchDrawer from '@/components/modules/user-management/EditBranchDrawer';
+import LoadingScreen from '@/components/ui/LoadingScreen';
 
 export default function UserManagementPage() {
     const { user, loading: userLoading } = useUser();
@@ -157,11 +158,7 @@ export default function UserManagementPage() {
     }, [notification]);
 
     if (userLoading) {
-        return (
-            <div className="flex items-center justify-center min-h-[400px]">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#f15a22]" />
-            </div>
-        );
+        return <LoadingScreen />;
     }
 
     return (

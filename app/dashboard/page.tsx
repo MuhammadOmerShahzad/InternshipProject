@@ -9,6 +9,7 @@ import TileGrid from '@/components/dashboard/TileGrid';
 import Tabs from '@/components/dashboard/Tabs';
 import AnnouncementForm from '@/components/dashboard/AnnouncementForm';
 import BranchTasksForm from '@/components/dashboard/BranchTasksForm';
+import LoadingScreen from '@/components/ui/LoadingScreen';
 
 const DEFAULT_MODULES = [
     'Licenses',
@@ -24,7 +25,7 @@ const DEFAULT_MODULES = [
 ];
 
 export default function DashboardPage() {
-    const { user } = useUser();
+    const { user, loading } = useUser();
 
     const [showAnnouncementForm, setShowAnnouncementForm] = useState(false);
     const [showTasksForm, setShowTasksForm] = useState(false);
@@ -78,7 +79,10 @@ export default function DashboardPage() {
         setRefreshTrigger((prev) => prev + 1);
     };
 
-
+    // Show loading screen while user context is loading
+    if (loading) {
+        return <LoadingScreen />;
+    }
 
     return (
         <>
