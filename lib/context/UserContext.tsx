@@ -45,10 +45,16 @@ export function UserProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<AppUser | null>(null);
     const [supabaseUser, setSupabaseUser] = useState<SupabaseUser | null>(null);
     const [loading, setLoading] = useState(true);
-    const supabase = createClient();
+    const [supabase, setSupabase] = useState<ReturnType<typeof createClient>>(null);
     const isRefreshing = useRef(false);
     const retryCount = useRef(0);
     const MAX_RETRIES = 2;
+
+    // Create Supabase client on mount (client-side only)
+    useEffect(() => {
+        const client = createClient();
+        setSupabase(client);
+    }, []);
 
     // Fetch user profile from server action
     const fetchUserProfile = useCallback(async (authUser: SupabaseUser): Promise<void> => {
@@ -131,6 +137,12 @@ export function UserProvider({ children }: { children: ReactNode }) {
         // console.log('🔄 [UserContext] Starting user refresh...');
 
         try {
+            // Skip if supabase client isn't available (SSR)
+            if (!supabase) {
+                setLoading(false);
+                return;
+            }
+
             // Get current auth user
             const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
 
@@ -167,6 +179,12 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
     // Initialize on mount and listen for auth changes
     useEffect(() => {
+        // Skip during SSR or if supabase client isn't available
+        if (!supabase) {
+            setLoading(false);
+            return;
+        }
+
         let mounted = true;
 
         const initialize = async () => {
@@ -187,7 +205,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
         // Auth state listener
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
-            async (event, session) => {
+            async (event: string, session: { user: SupabaseUser } | null) => {
                 // console.log('🔔 [UserContext] Auth event:', event, session?.user?.email);
 
                 if (!mounted) return;
