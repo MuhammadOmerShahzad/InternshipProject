@@ -125,6 +125,7 @@ export default function ModuleCatchAllPage({ params }: ModulePageProps) {
                         subModules={subModules}
                         basePath={basePath}
                         user={user}
+                        moduleName={moduleConfig.name}
                     />
                 </div>
             </main>

@@ -93,6 +93,7 @@ export default function ModuleMainPage({ params }: ModulePageProps) {
                             subModules={moduleConfig.subModules}
                             basePath={`/${moduleSlug}`}
                             user={user}
+                            moduleName={moduleConfig.name}
                         />
                     </div>
                 ) : (
