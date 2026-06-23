@@ -13,23 +13,32 @@ provider "aws" {
 }
 
 variable "aws_region" {
-  default = "us-east-1"
+  default = "us-east-2"
 }
 
 variable "vpc_id" {
-  default = "vpc-039ba887176e3f3ff"
+  default = "vpc-008d9c20fbf8fe036"
 }
 
 variable "public_subnets" {
-  default = ["subnet-0aa73349b6c29ee41", "subnet-0dca23516769b37cb"]
+  description = "List of public subnet IDs (e.g., loop-public-subnet, loop-public-subnet-2)"
+  type        = list(string)
+  default     = ["subnet-07f2b0aadea5a88f9", "subnet-0ffa52e9c3ba660df"]
 }
 
 variable "private_subnets" {
-  default = ["subnet-07ed6a5d3ebf6bfd8", "subnet-0085d273ab993bea7"]
+  description = "List of private subnet IDs (e.g., loop-private-subnet)"
+  type        = list(string)
+  default     = ["subnet-0168e1695c34f46a6"]
+}
+
+variable "acm_certificate_arn" {
+  description = "ARN of the ACM certificate for omershahzad.me"
+  type        = string
 }
 
 variable "app_name" {
-  default = "omer-project"
+  default = "loop"
 }
 
 variable "app_port" {
@@ -37,7 +46,7 @@ variable "app_port" {
 }
 
 variable "rds_host" {
-  default = "omer-project-db.c03swkc0coph.us-east-1.rds.amazonaws.com"
+  default = "loop-db.c5m0c60ykcap.us-east-2.rds.amazonaws.com"
 }
 
 variable "rds_user" {

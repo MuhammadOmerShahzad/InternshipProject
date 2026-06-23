@@ -1,5 +1,5 @@
 resource "aws_ecs_cluster" "app" {
-  name = "${var.app_name}-cluster"
+  name = var.app_name
 
   setting {
     name  = "containerInsights"
@@ -14,12 +14,12 @@ resource "aws_ecs_cluster" "app" {
 resource "aws_ecs_cluster_capacity_providers" "app" {
   cluster_name = aws_ecs_cluster.app.name
 
-  capacity_providers = ["SPOT", "ON_DEMAND"]
+  capacity_providers = ["FARGATE", "FARGATE_SPOT"]
 
   default_capacity_provider_strategy {
     base              = 1
     weight            = 100
-    capacity_provider = "ON_DEMAND"
+    capacity_provider = "FARGATE"
   }
 }
 
@@ -32,12 +32,35 @@ resource "aws_cloudwatch_log_group" "app" {
   }
 }
 
+resource "aws_iam_role" "ecs_task_execution_role" {
+  name = "${var.app_name}-ecs-task-execution-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "ecs-tasks.amazonaws.com"
+        }
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_policy" {
+  role       = aws_iam_role.ecs_task_execution_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+}
+
 resource "aws_ecs_task_definition" "app" {
-  family                   = var.app_name
+  family                   = "omer-internship-project"
   network_mode             = "awsvpc"
-  requires_compatibilities = ["EC2"]
-  cpu                      = "256"
-  memory                   = "512"
+  requires_compatibilities = ["FARGATE"]
+  cpu                      = "1024"
+  memory                   = "2048"
+  execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
 
   container_definitions = jsonencode([
     {
@@ -76,16 +99,26 @@ resource "aws_ecs_task_definition" "app" {
   ])
 
   tags = {
-    Name = "${var.app_name}-task"
+    Name = "omer-internship-project-task"
   }
 }
 
 resource "aws_ecs_service" "app" {
-  name            = "${var.app_name}-service"
+  name            = "omer-internship-project-service"
   cluster         = aws_ecs_cluster.app.id
   task_definition = aws_ecs_task_definition.app.arn
   desired_count   = 2
-  launch_type     = "EC2"
+
+  capacity_provider_strategy {
+    capacity_provider = "FARGATE"
+    weight            = 50
+    base              = 1
+  }
+
+  capacity_provider_strategy {
+    capacity_provider = "FARGATE_SPOT"
+    weight            = 50
+  }
 
   network_configuration {
     subnets         = var.private_subnets
@@ -98,95 +131,9 @@ resource "aws_ecs_service" "app" {
     container_port   = var.app_port
   }
 
-  depends_on = [aws_lb_listener.app]
+  depends_on = [aws_lb_listener.https]
 
   tags = {
-    Name = "${var.app_name}-service"
+    Name = "omer-internship-project-service"
   }
-}
-
-resource "aws_autoscaling_group" "app" {
-  name                = "${var.app_name}-asg"
-  vpc_zone_identifier = var.private_subnets
-  min_size            = 1
-  max_size            = 3
-  desired_capacity    = 2
-  health_check_type   = "ELB"
-  health_check_grace_period = 300
-
-  launch_template {
-    id      = aws_launch_template.app.id
-    version = "$Latest"
-  }
-
-  tag {
-    key                 = "Name"
-    value               = "${var.app_name}-asg-instance"
-    propagate_at_launch = true
-  }
-
-  depends_on = [aws_ecs_service.app]
-}
-
-resource "aws_launch_template" "app" {
-  name_prefix   = "${var.app_name}-lt-"
-  image_id      = data.aws_ami.ecs.id
-  instance_type = "t3.micro"
-
-  iam_instance_profile {
-    arn = aws_iam_instance_profile.ecs.arn
-  }
-
-  user_data = base64encode(templatefile("${path.module}/user_data.sh", {
-    cluster_name = aws_ecs_cluster.app.name
-  }))
-
-  tag_specifications {
-    resource_type = "instance"
-    tags = {
-      Name = "${var.app_name}-instance"
-    }
-  }
-}
-
-data "aws_ami" "ecs" {
-  most_recent = true
-  owners      = ["amazon"]
-
-  filter {
-    name   = "name"
-    values = ["amzn2-ami-ecs-hvm-*-x86_64-ebs"]
-  }
-
-  filter {
-    name   = "virtualization-type"
-    values = ["hvm"]
-  }
-}
-
-resource "aws_iam_role" "ecs_instance_role" {
-  name = "${var.app_name}-ecs-instance-role"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Action = "sts:AssumeRole"
-        Effect = "Allow"
-        Principal = {
-          Service = "ec2.amazonaws.com"
-        }
-      }
-    ]
-  })
-}
-
-resource "aws_iam_role_policy_attachment" "ecs_instance_role" {
-  role       = aws_iam_role.ecs_instance_role.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role"
-}
-
-resource "aws_iam_instance_profile" "ecs" {
-  name = "${var.app_name}-ecs-instance-profile"
-  role = aws_iam_role.ecs_instance_role.name
 }

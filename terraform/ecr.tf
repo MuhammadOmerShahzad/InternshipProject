@@ -1,5 +1,5 @@
 resource "aws_ecr_repository" "app" {
-  name                 = "${var.app_name}-app"
+  name                 = "omer/${var.app_name}"
   image_tag_mutability = "MUTABLE"
 
   image_scanning_configuration {
