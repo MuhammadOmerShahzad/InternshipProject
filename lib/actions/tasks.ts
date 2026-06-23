@@ -1,166 +1,127 @@
 'use server';
 
-import { createServiceClient, createClient } from '@/lib/supabase/server';
+import { db } from '@/lib/db';
+import { tasks, users } from '@/lib/db/schema';
+import { eq, desc, or, isNull, sql } from 'drizzle-orm';
+import { cookies } from 'next/headers';
 
 export interface Task {
     id: string;
     title: string;
     description: string | null;
     target_branches: string[] | null;
-    completed: boolean;
+    completed: boolean | null;
     created_by: string;
-    created_at: string;
+    created_at: Date | null;
 }
 
-/**
- * Create multiple tasks (max 5)
- * @param tasks - Array of task objects with title and optional description
- * @param branchIds - Array of branch IDs (null or empty = all branches)
- */
+/** Create multiple tasks (max 5) */
 export async function createTasks(
-    tasks: { title: string; description?: string }[],
+    taskList: { title: string; description?: string }[],
     branchIds: string[] | null
 ) {
-    const supabase = await createClient();
-    const serviceClient = createServiceClient();
+    try {
+        if (taskList.length > 5) return { success: false, error: 'Maximum 5 tasks allowed' };
+        if (taskList.length === 0 || taskList.some(t => !t.title.trim())) {
+            return { success: false, error: 'All tasks must have a title' };
+        }
 
-    // Validate max 5 tasks
-    if (tasks.length > 5) {
-        return { success: false, error: 'Maximum 5 tasks allowed' };
+        const cookieStore = await cookies();
+        const userId = cookieStore.get('userId')?.value;
+        if (!userId) return { success: false, error: 'Not authenticated' };
+
+        // Verify admin
+        const user = await db.query.users.findFirst({
+            where: (u, { eq }) => eq(u.id, userId),
+            columns: { role: true },
+        });
+        if (user?.role !== 'Admin') {
+            return { success: false, error: 'Only admins can create tasks' };
+        }
+
+        const targetBranches = branchIds && branchIds.length > 0 ? branchIds : null;
+
+        const data = await db
+            .insert(tasks)
+            .values(
+                taskList.map(task => ({
+                    title: task.title.trim(),
+                    description: task.description?.trim() || null,
+                    targetBranches,
+                    createdBy: userId,
+                    completed: false,
+                }))
+            )
+            .returning();
+
+        return { success: true, tasks: data };
+    } catch (err) {
+        console.error('Error creating tasks:', err);
+        return { success: false, error: 'Failed to create tasks' };
     }
-
-    // Validate tasks
-    if (tasks.length === 0 || tasks.some(t => !t.title.trim())) {
-        return { success: false, error: 'All tasks must have a title' };
-    }
-
-    // Get current user
-    const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
-    if (authError || !authUser) {
-        return { success: false, error: 'Not authenticated' };
-    }
-
-    // Verify user is admin
-    const { data: userData } = await serviceClient
-        .from('users')
-        .select('role')
-        .eq('id', authUser.id)
-        .single();
-
-    if (userData?.role !== 'Admin') {
-        return { success: false, error: 'Only admins can create tasks' };
-    }
-
-    // Format branchIds - null or empty array means all branches
-    const targetBranches = (branchIds && branchIds.length > 0) ? branchIds : null;
-
-    // Insert tasks
-    const tasksToInsert = tasks.map(task => ({
-        title: task.title.trim(),
-        description: task.description?.trim() || null,
-        target_branches: targetBranches,
-        created_by: authUser.id,
-        completed: false,
-    }));
-
-    const { data, error } = await serviceClient
-        .from('tasks')
-        .insert(tasksToInsert)
-        .select();
-
-    if (error) {
-        console.error('Error creating tasks:', error);
-        return { success: false, error: error.message };
-    }
-
-    return { success: true, tasks: data };
 }
 
-/**
- * Get tasks for a user's branch
- * @param userBranchId - User's branch ID
- */
+/** Get tasks for a user's branch */
 export async function getUserTasks(userBranchId: string) {
-    const serviceClient = createServiceClient();
+    try {
+        const data = await db
+            .select()
+            .from(tasks)
+            .where(
+                or(
+                    isNull(tasks.targetBranches),
+                    sql`${tasks.targetBranches} @> ARRAY[${userBranchId}]::uuid[]`
+                )
+            )
+            .orderBy(desc(tasks.createdAt));
 
-    const { data, error } = await serviceClient
-        .from('tasks')
-        .select('*')
-        .or(`target_branches.is.null,target_branches.cs.{${userBranchId}}`)
-        .order('created_at', { ascending: false });
+        const result = data.map(task => ({
+            id: task.id,
+            title: task.title,
+            description: task.description,
+            target_branches: task.targetBranches,
+            completed: task.completed,
+            created_by: task.createdBy,
+            created_at: task.createdAt,
+        }));
 
-    if (error) {
-        console.error('Error fetching tasks:', error);
-        return { tasks: [], error: error.message };
+        return { tasks: result, error: null };
+    } catch (err) {
+        console.error('Error fetching tasks:', err);
+        return { tasks: [], error: 'Failed to fetch tasks' };
     }
-
-    return { tasks: data as Task[], error: null };
 }
 
-/**
- * Toggle task completion status
- * @param taskId - Task ID
- * @param completed - New completion status
- */
+/** Toggle task completion status */
 export async function toggleTaskCompletion(taskId: string, completed: boolean) {
-    const supabase = await createClient();
-    const serviceClient = createServiceClient();
-
-    // Get current user
-    const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
-    if (authError || !authUser) {
-        return { success: false, error: 'Not authenticated' };
+    try {
+        await db.update(tasks).set({ completed }).where(eq(tasks.id, taskId));
+        return { success: true };
+    } catch (err) {
+        console.error('Error updating task:', err);
+        return { success: false, error: 'Failed to update task' };
     }
-
-    // Update task
-    const { error } = await serviceClient
-        .from('tasks')
-        .update({ completed })
-        .eq('id', taskId);
-
-    if (error) {
-        console.error('Error updating task:', error);
-        return { success: false, error: error.message };
-    }
-
-    return { success: true };
 }
 
-/**
- * Delete a task (admin only)
- * @param taskId - Task ID
- */
+/** Delete a task (admin only) */
 export async function deleteTask(taskId: string) {
-    const supabase = await createClient();
-    const serviceClient = createServiceClient();
+    try {
+        const cookieStore = await cookies();
+        const userId = cookieStore.get('userId')?.value;
+        if (!userId) return { success: false, error: 'Not authenticated' };
 
-    // Get current user
-    const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
-    if (authError || !authUser) {
-        return { success: false, error: 'Not authenticated' };
+        const user = await db.query.users.findFirst({
+            where: (u, { eq }) => eq(u.id, userId),
+            columns: { role: true },
+        });
+        if (user?.role !== 'Admin') {
+            return { success: false, error: 'Only admins can delete tasks' };
+        }
+
+        await db.delete(tasks).where(eq(tasks.id, taskId));
+        return { success: true };
+    } catch (err) {
+        console.error('Error deleting task:', err);
+        return { success: false, error: 'Failed to delete task' };
     }
-
-    // Verify user is admin
-    const { data: userData } = await serviceClient
-        .from('users')
-        .select('role')
-        .eq('id', authUser.id)
-        .single();
-
-    if (userData?.role !== 'Admin') {
-        return { success: false, error: 'Only admins can delete tasks' };
-    }
-
-    // Delete task
-    const { error } = await serviceClient
-        .from('tasks')
-        .delete()
-        .eq('id', taskId);
-
-    if (error) {
-        console.error('Error deleting task:', error);
-        return { success: false, error: error.message };
-    }
-
-    return { success: true };
 }

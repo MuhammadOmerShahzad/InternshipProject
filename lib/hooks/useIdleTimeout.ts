@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 
 const IDLE_TIMEOUT_MS = 15 * 60 * 1000; // 15 minutes in milliseconds
@@ -31,7 +30,6 @@ export function useIdleTimeout(options: UseIdleTimeoutOptions = {}) {
     } = options;
 
     const router = useRouter();
-    const supabase = createClient();
     const timeoutRef = useRef<NodeJS.Timeout | null>(null);
     const warningRef = useRef<NodeJS.Timeout | null>(null);
     const lastActivityRef = useRef<number>(0); // Initialize to 0, set in useEffect
@@ -51,7 +49,7 @@ export function useIdleTimeout(options: UseIdleTimeoutOptions = {}) {
         dismissWarning();
 
         try {
-            await supabase.auth.signOut();
+            await fetch('/api/auth/logout', { method: 'POST' });
         } catch (error) {
             console.error('Error signing out:', error);
         }
@@ -63,7 +61,7 @@ export function useIdleTimeout(options: UseIdleTimeoutOptions = {}) {
 
         // Redirect to login with timeout message
         router.push('/login?reason=timeout');
-    }, [supabase, router, onTimeout, dismissWarning]);
+    }, [router, onTimeout, dismissWarning]);
 
     const showWarning = useCallback(() => {
         console.log('⚠️ [IdleTimeout] Showing 1 minute warning');

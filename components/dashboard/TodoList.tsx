@@ -29,11 +29,12 @@ export default function TodoList({ userBranchId, refreshTrigger }: TodoListProps
         fetchTasks();
     }, [userBranchId, refreshTrigger]);
 
-    const handleToggleComplete = async (taskId: string, currentStatus: boolean) => {
+    const handleToggleComplete = async (taskId: string, currentStatus: boolean | null) => {
+        const newStatus = !currentStatus;
         // Optimistic update
-        setTasks(tasks.map(t => t.id === taskId ? { ...t, completed: !currentStatus } : t));
+        setTasks(tasks.map(t => t.id === taskId ? { ...t, completed: newStatus } : t));
 
-        const result = await toggleTaskCompletion(taskId, !currentStatus);
+        const result = await toggleTaskCompletion(taskId, newStatus);
         if (!result.success) {
             // Revert on error
             setTasks(tasks.map(t => t.id === taskId ? { ...t, completed: currentStatus } : t));
@@ -80,8 +81,8 @@ export default function TodoList({ userBranchId, refreshTrigger }: TodoListProps
                 >
                     <input
                         type="checkbox"
-                        checked={task.completed}
-                        onChange={() => handleToggleComplete(task.id, task.completed)}
+                        checked={task.completed ?? false}
+                        onChange={() => handleToggleComplete(task.id, task.completed ?? false)}
                         className="mt-0.5 w-5 h-5 rounded border-gray-300 text-[#f15a22] focus:ring-[#f15a22] focus:ring-offset-0 cursor-pointer"
                     />
                     <div className="flex-1 min-w-0">

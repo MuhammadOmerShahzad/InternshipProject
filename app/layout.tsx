@@ -23,11 +23,11 @@ const cocon = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Muawin",
-  description: "Streamline your business operations with Muawin",
+  title: "LOOP",
+  description: "Streamline your business operations with LOOP",
   icons: {
-    icon: "/images/logos/muawin_monogram.png",
-    apple: "/images/logos/muawin_monogram.png",
+    icon: "/images/logos/LOOP_Title (1).png",
+    apple: "/images/logos/LOOP_Title (1).png",
   },
 };
 

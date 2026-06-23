@@ -1,0 +1,11 @@
+services:
+
+  app:
+    build: .
+    container_name: omer-project-app
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://omerprojectdb:omer12345@omer-project-db.c03swkc0coph.us-east-1.rds.amazonaws.com:5432/postgres
+      NODE_ENV: production
+    command: npm start

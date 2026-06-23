@@ -153,8 +153,8 @@ export default function AppBar({
                     <Link href="/" className="flex items-center">
                         <div className="relative w-24 sm:w-32 h-10">
                             <Image
-                                src='/images/logos/muawin_logo_white.svg'
-                                alt="Muawin Logo"
+                                src='/images/logos/LOOP_Title (1).png'
+                                alt="Loop Logo"
                                 fill
                                 className="object-contain cursor-pointer"
                                 priority

@@ -41,31 +41,45 @@ function LoginForm() {
         setLoading(true);
 
         try {
+            console.log('[LOGIN] Submitting login form with email:', email);
             const result = await login(email, password);
+            console.log('[LOGIN] Server response received:', JSON.stringify(result));
 
-            if (result.success) {
-                // Refresh user context to load user data immediately
-                await refreshUser();
-                router.push(redirectTo);
-                router.refresh();
+            if (result && result.success) {
+                console.log('[LOGIN] Login successful, result:', result);
+                console.log('[LOGIN] About to redirect to:', redirectTo);
+                // Don't wait for refreshUser - redirect immediately, user context will load data
+                try {
+                    await router.push(redirectTo);
+                    console.log('[LOGIN] router.push completed');
+                } catch (pushErr) {
+                    console.error('[LOGIN] router.push failed, using fallback:', pushErr);
+                    // Fallback to window.location if router.push fails
+                    window.location.href = redirectTo;
+                }
+                console.log('[LOGIN] Redirect triggered');
             } else {
-                setError(result.error || 'Login failed. Please try again.');
+                const errorMsg = result?.error || 'Login failed. Please try again.';
+                console.log('[LOGIN] Login failed:', errorMsg);
+                setError(errorMsg);
             }
-        } catch {
-            setError('An unexpected error occurred. Please try again.');
+        } catch (e) {
+            console.error('[LOGIN] Exception caught:', e);
+            console.error('[LOGIN] Error details:', e instanceof Error ? e.message : String(e));
+            setError(e instanceof Error ? e.message : 'An unexpected error occurred. Please try again.');
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <div className="min-h-screen w-full flex items-center justify-center bg-[url('/images/backgrounds/background.jpg')] bg-cover bg-center p-4 font-sans">
+        <div className="min-h-screen w-full flex items-center justify-center bg-[url('/images/backgrounds/signin_background.png')] bg-cover bg-center p-4 font-sans">
             <div className="w-full max-w-[1100px] bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col md:flex-row p-4 md:p-6 gap-6 md:gap-12 items-center">
 
                 {/* Left Side - Image */}
                 <div className="hidden md:block w-1/2 h-[600px] relative rounded-2xl overflow-hidden">
                     <Image
-                        src='/images/backgrounds/muawin_signin.jpg'
+                        src='/images/backgrounds/signin.png'
                         alt="Welcome to Muawin"
                         fill
                         className="object-cover"
@@ -80,7 +94,7 @@ function LoginForm() {
                     <div className="flex flex-col items-center mb-8">
                         <div className="relative w-72 h-20 mb-2">
                             <Image
-                                src='/images/logos/muawin_logo_orange.png'
+                                src='/images/logos/LOOP_Title (1).png'
                                 alt="Muawin Logo"
                                 fill
                                 className="object-contain"

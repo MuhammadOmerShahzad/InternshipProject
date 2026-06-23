@@ -1,0 +1,77 @@
+{
+  "family": "omer-internship-project",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "1024",
+  "memory": "2048",
+  "containerDefinitions": [
+    {
+      "name": "omer-internship-project",
+      "image": "395063533284.dkr.ecr.us-east-2.amazonaws.com/omer/loop:latest",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 3000,
+          "hostPort": 3000,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        {
+          "name": "NODE_ENV",
+          "value": "production"
+        },
+        {
+          "name": "NEXT_PUBLIC_API_BASE_URL",
+          "value": "https://omershahzad.me/api"
+        },
+        {
+          "name": "DB_HOST",
+          "value": "loop-db.c5m0c60ykcap.us-east-2.rds.amazonaws.com"
+        },
+        {
+          "name": "DB_PORT",
+          "value": "5432"
+        },
+        {
+          "name": "DB_USER",
+          "value": "omer"
+        },
+        {
+          "name": "DB_NAME",
+          "value": "postgres"
+        },
+        {
+          "name": "DATABASE_URL",
+          "value": "postgresql://omer:omer12345@loop-db.c5m0c60ykcap.us-east-2.rds.amazonaws.com:5432/postgres?sslmode=require"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/omer-internship-project",
+          "awslogs-region": "us-east-2",
+          "awslogs-stream-prefix": "ecs"
+        }
+      },
+      "cpu": 1024,
+      "memory": 2048
+    }
+  ],
+  "executionRoleArn": "arn:aws:iam::395063533284:role/ecsTaskExecutionRole",
+  "taskRoleArn": "arn:aws:iam::395063533284:role/ecsTaskRole",
+  "runtimePlatform": {
+    "cpuArchitecture": "ARM64",
+    "operatingSystemFamily": "LINUX"
+  },
+  "tags": [
+    {
+      "key": "Environment",
+      "value": "production"
+    },
+    {
+      "key": "Project",
+      "value": "omer-internship"
+    }
+  ]
+}

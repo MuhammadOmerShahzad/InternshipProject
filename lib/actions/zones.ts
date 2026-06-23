@@ -1,164 +1,119 @@
 'use server';
 
-import { createServiceClient } from '@/lib/supabase/server';
+import { db } from '@/lib/db';
+import { zones, branches } from '@/lib/db/schema';
+import { eq, asc } from 'drizzle-orm';
+import { revalidatePath } from 'next/cache';
 
 export interface Zone {
     id: string;
     name: string;
     code: string;
-    created_at: string;
+    created_at: string | null;
 }
 
 export interface Branch {
     id: string;
     name: string;
     zone_id: string;
-    created_at: string;
+    created_at: string | null;
 }
 
-/**
- * Get all zones
- */
+/** Get all zones */
 export async function getZones() {
-    const supabase = createServiceClient();
-
-    const { data, error } = await supabase
-        .from('zones')
-        .select('*')
-        .order('name');
-
-    if (error) {
-        console.error('Error fetching zones:', error);
-        return { zones: [], error: error.message };
+    try {
+        const data = await db.select().from(zones).orderBy(asc(zones.name));
+        const result = data.map(zone => ({
+            id: zone.id,
+            name: zone.name,
+            code: zone.code,
+            created_at: zone.createdAt ? new Date(zone.createdAt).toISOString() : null,
+        }));
+        return { zones: result, error: null };
+    } catch (err) {
+        console.error('Error fetching zones:', err);
+        return { zones: [], error: 'Failed to fetch zones' };
     }
-
-    return { zones: data || [], error: null };
 }
 
-/**
- * Get branches by zone ID
- */
+/** Get branches by zone ID */
 export async function getBranchesByZone(zoneId: string) {
-    const supabase = createServiceClient();
-
-    const { data, error } = await supabase
-        .from('branches')
-        .select('*')
-        .eq('zone_id', zoneId)
-        .order('name');
-
-    if (error) {
-        console.error('Error fetching branches:', error);
-        return { branches: [], error: error.message };
+    try {
+        const data = await db
+            .select()
+            .from(branches)
+            .where(eq(branches.zoneId, zoneId))
+            .orderBy(asc(branches.name));
+        const result = data.map(branch => ({
+            id: branch.id,
+            name: branch.name,
+            zone_id: branch.zoneId,
+            created_at: branch.createdAt ? new Date(branch.createdAt).toISOString() : null,
+        }));
+        return { branches: result, error: null };
+    } catch (err) {
+        console.error('Error fetching branches:', err);
+        return { branches: [], error: 'Failed to fetch branches' };
     }
-
-    return { branches: data || [], error: null };
 }
 
-/**
- * Get all branches
- */
+/** Get all branches with zone info */
 export async function getAllBranches() {
-    const supabase = createServiceClient();
-
-    const { data, error } = await supabase
-        .from('branches')
-        .select(`
-            *,
-            zones:zone_id(id, name, code)
-        `)
-        .order('name');
-
-    if (error) {
-        console.error('Error fetching all branches:', error);
-        return { branches: [], error: error.message };
+    try {
+        const data = await db.query.branches.findMany({
+            orderBy: asc(branches.name),
+            with: { zone: true },
+        });
+        return { branches: data, error: null };
+    } catch (err) {
+        console.error('Error fetching all branches:', err);
+        return { branches: [], error: 'Failed to fetch branches' };
     }
-
-    return { branches: data || [], error: null };
 }
 
-/**
- * Add a new branch to a zone
- */
+/** Add a new branch to a zone */
 export async function addBranch(zoneId: string, branchName: string) {
-    const supabase = createServiceClient();
-
-    console.log('[addBranch] Adding branch:', { zoneId, branchName });
-
-    const { data, error } = await supabase
-        .from('branches')
-        .insert({
-            zone_id: zoneId,
-            name: branchName,
-        })
-        .select()
-        .single();
-
-    if (error) {
-        console.error('[addBranch] Error:', error);
-        return { branch: null, error: error.message };
+    try {
+        const [branch] = await db
+            .insert(branches)
+            .values({ zoneId, name: branchName })
+            .returning();
+        revalidatePath('/user-management');
+        revalidatePath('/');
+        return { branch, error: null };
+    } catch (err) {
+        console.error('[addBranch] Error:', err);
+        return { branch: null, error: 'Failed to add branch' };
     }
-
-    console.log('[addBranch] Success:', data);
-
-    // Revalidate paths that might display branch data
-    const { revalidatePath } = await import('next/cache');
-    revalidatePath('/user-management');
-    revalidatePath('/');
-
-    return { branch: data, error: null };
 }
 
-/**
- * Update branch name
- */
+/** Update branch name */
 export async function updateBranch(branchId: string, newName: string, zoneId?: string) {
-    const supabase = createServiceClient();
+    try {
+        const updateData: { name: string; zoneId?: string } = { name: newName };
+        if (zoneId) updateData.zoneId = zoneId;
 
-    console.log('[updateBranch] Updating branch:', { branchId, newName, zoneId });
-
-    const updateData: { name: string; zone_id?: string } = { name: newName };
-    if (zoneId) {
-        updateData.zone_id = zoneId;
+        const [branch] = await db
+            .update(branches)
+            .set(updateData)
+            .where(eq(branches.id, branchId))
+            .returning();
+        revalidatePath('/user-management');
+        revalidatePath('/');
+        return { branch, error: null };
+    } catch (err) {
+        console.error('[updateBranch] Error:', err);
+        return { branch: null, error: 'Failed to update branch' };
     }
-
-    const { data, error } = await supabase
-        .from('branches')
-        .update(updateData)
-        .eq('id', branchId)
-        .select()
-        .single();
-
-    if (error) {
-        console.error('[updateBranch] Error:', error);
-        return { branch: null, error: error.message };
-    }
-
-    console.log('[updateBranch] Success:', data);
-
-    // Revalidate paths that might display branch data
-    const { revalidatePath } = await import('next/cache');
-    revalidatePath('/user-management');
-    revalidatePath('/');
-
-    return { branch: data, error: null };
 }
 
-/**
- * Delete a branch
- */
+/** Delete a branch */
 export async function deleteBranch(branchId: string) {
-    const supabase = createServiceClient();
-
-    const { error } = await supabase
-        .from('branches')
-        .delete()
-        .eq('id', branchId);
-
-    if (error) {
-        console.error('Error deleting branch:', error);
-        return { success: false, error: error.message };
+    try {
+        await db.delete(branches).where(eq(branches.id, branchId));
+        return { success: true, error: null };
+    } catch (err) {
+        console.error('Error deleting branch:', err);
+        return { success: false, error: 'Failed to delete branch' };
     }
-
-    return { success: true, error: null };
 }

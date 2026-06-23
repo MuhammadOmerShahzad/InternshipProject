@@ -1,6 +1,9 @@
 'use server';
 
-import { createClient } from '@/lib/supabase/server';
+import { db } from '@/lib/db';
+import { users } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
+import { cookies } from 'next/headers';
 import { searchModuleConfig } from '@/lib/utils/searchUtils';
 
 export interface SearchResult {
@@ -23,37 +26,26 @@ export async function searchGlobal(query: string): Promise<SearchResult[]> {
         return [];
     }
 
-    const supabase = await createClient();
-
-    // Get current user to check their registered modules
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('userId')?.value;
+    if (!userId) {
         console.log('[searchGlobal] No authenticated user found');
         return [];
     }
 
-    console.log('[searchGlobal] Authenticated user:', user.id, user.email);
-
     // Get user's registered modules
-    const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('registered_modules, zone_id, branch_id')
-        .eq('id', user.id)
-        .single();
-
-    console.log('[searchGlobal] User data query result:', { userData, userError });
-
-    if (userError) {
-        console.error('[searchGlobal] Error fetching user data:', userError);
-        return [];
-    }
+    const [userData] = await db
+        .select({ registeredModules: users.registeredModules })
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
 
     if (!userData) {
         console.log('[searchGlobal] No user data found in database');
         return [];
     }
 
-    const allowedModules = (userData.registered_modules as string[]) || [];
+    const allowedModules = userData.registeredModules || [];
     console.log('[searchGlobal] User registered modules:', allowedModules);
 
     if (allowedModules.length === 0) {

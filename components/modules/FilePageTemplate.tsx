@@ -98,12 +98,12 @@ export default function FilePageTemplate({ title, subModule, user, moduleSlug, s
             toast.error(`Error loading files: ${error}`);
         } else {
             // Transform FileRecord to FileData format
-            const transformedFiles: FileData[] = fileData.map((file: FileRecord) => ({
+            const transformedFiles: FileData[] = fileData.map((file: FileRecord, index: number) => ({
                 fileId: file.id,
                 filename: file.original_filename,
                 filetype: file.file_type,
                 lastModified: file.created_at,
-                fileNumber: String(file.serial_number).padStart(5, '0'),
+                fileNumber: String(index + 1).padStart(5, '0'),
             }));
             setFiles(transformedFiles);
         }

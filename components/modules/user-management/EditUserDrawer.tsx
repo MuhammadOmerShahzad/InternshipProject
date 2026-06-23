@@ -116,7 +116,6 @@ export default function EditUserDrawer({ open, onClose, user, onUserUpdated }: E
         const input: UpdateUserInput = {
             firstName: formData.firstName,
             lastName: formData.lastName,
-            name: formData.displayName,
             role: formData.role,
             zoneId: formData.zoneId,
             branchId: formData.branchId,

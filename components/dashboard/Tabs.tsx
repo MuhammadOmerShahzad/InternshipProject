@@ -8,7 +8,7 @@ interface Announcement {
     id: string;
     title: string;
     message: string;
-    created_at: string;
+    created_at: Date | null | string;
     created_by: string;
     creator_name?: string;
 }
@@ -133,7 +133,7 @@ export default function TabComponent({
                                 </p>
                                 <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-center w-full px-4">
                                     <p className="text-[#666] text-xs mb-0.5">
-                                        📅 {new Date(announcement.created_at).toLocaleDateString()}
+                                        📅 {announcement.created_at ? new Date(announcement.created_at).toLocaleDateString() : 'N/A'}
                                     </p>
                                     <p className="text-[#666] text-xs">
                                         👤 Posted by {announcement.creator_name || 'Admin'}

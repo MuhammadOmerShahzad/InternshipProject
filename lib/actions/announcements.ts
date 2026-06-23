@@ -1,6 +1,9 @@
 'use server';
 
-import { createServiceClient, createClient } from '@/lib/supabase/server';
+import { db } from '@/lib/db';
+import { announcements, users } from '@/lib/db/schema';
+import { desc, or, isNull, sql } from 'drizzle-orm';
+import { cookies } from 'next/headers';
 
 export interface Announcement {
     id: string;
@@ -8,123 +11,105 @@ export interface Announcement {
     message: string;
     target_branches: string[] | null;
     created_by: string;
-    created_at: string;
+    created_at: Date | null;
     creator_name?: string;
 }
 
-/**
- * Post a new announcement
- * @param title - Announcement title
- * @param message - Announcement message
- * @param branchIds - Array of branch IDs (null or empty = all branches)
- */
+/** Post a new announcement */
 export async function postAnnouncement(
     title: string,
     message: string,
     branchIds: string[] | null
 ) {
-    const supabase = await createClient();
-    const serviceClient = createServiceClient();
+    try {
+        const cookieStore = await cookies();
+        const userId = cookieStore.get('userId')?.value;
+        if (!userId) return { success: false, error: 'Not authenticated' };
 
-    // Get current user
-    const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
-    if (authError || !authUser) {
-        return { success: false, error: 'Not authenticated' };
-    }
-
-    // Verify user is admin
-    const { data: userData } = await serviceClient
-        .from('users')
-        .select('role')
-        .eq('id', authUser.id)
-        .single();
-
-    if (userData?.role !== 'Admin') {
-        return { success: false, error: 'Only admins can post announcements' };
-    }
-
-    // Format branchIds - null or empty array means all branches
-    const targetBranches = (branchIds && branchIds.length > 0) ? branchIds : null;
-
-    // Insert announcement
-    const { data, error } = await serviceClient
-        .from('announcements')
-        .insert({
-            title,
-            message,
-            target_branches: targetBranches,
-            created_by: authUser.id,
-        })
-        .select()
-        .single();
-
-    if (error) {
-        console.error('Error creating announcement:', error);
-        return { success: false, error: error.message };
-    }
-
-    return { success: true, announcement: data };
-}
-
-/**
- * Get the latest announcement for a user's branch
- * @param userBranchId - User's branch ID
- */
-export async function getLatestAnnouncement(userBranchId: string) {
-    const serviceClient = createServiceClient();
-
-    const { data, error } = await serviceClient
-        .from('announcements')
-        .select(`
-            *,
-            users:created_by(name)
-        `)
-        .or(`target_branches.is.null,target_branches.cs.{${userBranchId}}`)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
-
-    if (error) {
-        // No announcements is not an error
-        if (error.code === 'PGRST116') {
-            return { announcement: null };
+        // Verify user is admin
+        const user = await db.query.users.findFirst({
+            where: (u, { eq }) => eq(u.id, userId),
+            columns: { role: true },
+        });
+        if (user?.role !== 'Admin') {
+            return { success: false, error: 'Only admins can post announcements' };
         }
-        console.error('Error fetching announcement:', error);
-        return { announcement: null, error: error.message };
+
+        const targetBranches = branchIds && branchIds.length > 0 ? branchIds : null;
+
+        const [data] = await db
+            .insert(announcements)
+            .values({ title, message, targetBranches, createdBy: userId })
+            .returning();
+
+        const announcement: Announcement = {
+            ...data,
+            target_branches: data.targetBranches as string[] | null,
+            created_by: data.createdBy,
+            created_at: data.createdAt,
+        };
+
+        return { success: true, announcement };
+    } catch (err) {
+        console.error('Error creating announcement:', err);
+        return { success: false, error: 'Failed to post announcement' };
     }
-
-    // Transform data
-    const announcement: Announcement = {
-        ...data,
-        creator_name: data.users?.name || 'Unknown',
-    };
-
-    return { announcement, error: null };
 }
 
-/**
- * Get all announcements (for admin view, optional future feature)
- */
-export async function getAllAnnouncements() {
-    const serviceClient = createServiceClient();
+/** Get the latest announcement for a user's branch */
+export async function getLatestAnnouncement(userBranchId: string) {
+    try {
+        const data = await db
+            .select()
+            .from(announcements)
+            .where(
+                or(
+                    isNull(announcements.targetBranches),
+                    sql`${announcements.targetBranches} @> ARRAY[${userBranchId}]::uuid[]`
+                )
+            )
+            .orderBy(desc(announcements.createdAt))
+            .limit(1);
 
-    const { data, error } = await serviceClient
-        .from('announcements')
-        .select(`
-            *,
-            users:created_by(name)
-        `)
-        .order('created_at', { ascending: false });
+        if (!data.length) return { announcement: null };
 
-    if (error) {
-        console.error('Error fetching announcements:', error);
-        return { announcements: [], error: error.message };
+        const announcement: Announcement = {
+            ...data[0],
+            target_branches: data[0].targetBranches as string[] | null,
+            created_by: data[0].createdBy,
+            created_at: data[0].createdAt,
+        };
+
+        return { announcement, error: null };
+    } catch (err) {
+        console.error('Error fetching announcement:', err);
+        return { announcement: null, error: 'Failed to fetch announcement' };
     }
+}
 
-    const announcements: Announcement[] = data.map((item) => ({
-        ...item,
-        creator_name: item.users?.name || 'Unknown',
-    }));
+/** Get all announcements */
+export async function getAllAnnouncements() {
+    try {
+        const data = await db.query.announcements.findMany({
+            orderBy: desc(announcements.createdAt),
+            with: { creator: { columns: { firstName: true, lastName: true } } },
+        });
 
-    return { announcements, error: null };
+        const result: Announcement[] = data.map(item => ({
+            ...item,
+            target_branches: item.targetBranches as string[] | null,
+            created_by: item.createdBy,
+            created_at: item.createdAt,
+            creator_name: item.creator
+                ? item.creator.lastName
+                    ? `${item.creator.firstName} ${item.creator.lastName}`
+                    : item.creator.firstName
+                : 'Unknown',
+        }));
+
+        return { announcements: result, error: null };
+    } catch (err) {
+        console.error('Error fetching announcements:', err);
+        return { announcements: [], error: 'Failed to fetch announcements' };
+    }
 }

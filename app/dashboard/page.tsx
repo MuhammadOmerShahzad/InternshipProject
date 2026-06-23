@@ -74,8 +74,11 @@ export default function DashboardPage() {
 
 
 
-    const handleAnnouncementAdded = (newAnnouncement: { id: string; title: string; message: string; created_at: string; created_by: string; creator_name?: string }) => {
-        setLatestAnnouncement(newAnnouncement);
+    const handleAnnouncementAdded = (newAnnouncement: { id: string; title: string; message: string; created_at: Date | null; created_by: string; creator_name?: string }) => {
+        setLatestAnnouncement({
+            ...newAnnouncement,
+            created_at: newAnnouncement.created_at ? new Date(newAnnouncement.created_at).toISOString() : '',
+        });
         setRefreshTrigger((prev) => prev + 1);
     };
 

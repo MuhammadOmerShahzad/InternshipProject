@@ -212,7 +212,7 @@ export default function AddUserDrawer({ open, onClose, onUserCreated }: AddUserD
             firstName: formData.firstName,
             lastName: formData.lastName,
             displayName: formData.displayName,
-            email: `${formData.username}@muawin.com`,
+            email: `${formData.username}@loop.com`,
             password: formData.generatedPassword,
             role: formData.roleType === 'Custom Role' ? formData.customRole : formData.role,
             zoneId: formData.zoneId,
@@ -422,7 +422,7 @@ export default function AddUserDrawer({ open, onClose, onUserCreated }: AddUserD
                                                 className="flex-1 px-4 py-3 bg-transparent outline-none dark:text-white dark:placeholder-gray-500"
                                             />
                                             <span className="px-4 py-3 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 font-medium border-l border-gray-200 dark:border-gray-600 select-none">
-                                                @muawin.com
+                                                @loop.com
                                             </span>
                                         </div>
                                         {errors.username && <p className="text-xs text-red-500 font-medium ml-1">{errors.username}</p>}
@@ -637,7 +637,7 @@ export default function AddUserDrawer({ open, onClose, onUserCreated }: AddUserD
                                             </div>
                                             <div className="space-y-1">
                                                 <span className="text-gray-500 dark:text-gray-400 text-xs uppercase font-semibold tracking-wider">Email Address</span>
-                                                <p className="font-medium text-gray-900 dark:text-white text-base">{formData.username}@muawin.com</p>
+                                                <p className="font-medium text-gray-900 dark:text-white text-base">{formData.username}@loop.com</p>
                                             </div>
                                             <div className="space-y-1">
                                                 <span className="text-gray-500 dark:text-gray-400 text-xs uppercase font-semibold tracking-wider">Role</span>

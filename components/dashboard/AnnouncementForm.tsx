@@ -7,7 +7,7 @@ import { postAnnouncement } from '@/lib/actions/announcements';
 
 interface AnnouncementFormProps {
     onClose: () => void;
-    onAnnouncementAdded?: (announcement: { id: string; title: string; message: string; created_at: string; created_by: string; creator_name?: string }) => void;
+    onAnnouncementAdded?: (announcement: { id: string; title: string; message: string; created_at: Date | null; created_by: string; creator_name?: string }) => void;
 }
 
 interface Branch {

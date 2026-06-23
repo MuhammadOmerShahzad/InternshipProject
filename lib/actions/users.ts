@@ -1,21 +1,25 @@
 'use server';
 
-import { createServiceClient, createClient } from '@/lib/supabase/server';
+import { db } from '@/lib/db';
+import { users, zones, branches } from '@/lib/db/schema';
+import { eq, desc, inArray } from 'drizzle-orm';
+import { cookies } from 'next/headers';
+import crypto from 'crypto';
 
 export interface User {
     id: string;
     email: string;
     name: string;
     first_name: string;
-    last_name: string;
+    last_name: string | null;
     role: string;
     zone_id: string;
     branch_id: string;
     zone_name?: string;
     branch_name?: string;
-    registered_modules: string[];
+    registered_modules: string[] | null;
+    created_at: Date | null;
     plain_password?: string;
-    created_at: string;
 }
 
 export interface CreateUserInput {
@@ -33,276 +37,185 @@ export interface CreateUserInput {
 export interface UpdateUserInput {
     firstName?: string;
     lastName?: string;
-    name?: string;
     role?: string;
     zoneId?: string;
     branchId?: string;
 }
 
-/**
- * Get current authenticated user with their profile data
- * Uses service client to bypass RLS
- */
+/** Get current authenticated user with profile data */
 export async function getCurrentUser() {
-    // const startTime = Date.now();
-    // console.log('[getCurrentUser] Starting...');
+    try {
+        const cookieStore = await cookies();
+        const userId = cookieStore.get('userId')?.value;
+        const session = cookieStore.get('session')?.value;
 
-    // Use regular client to get auth session
-    const supabase = await createClient();
-    const _authStart = Date.now();
+        console.log('[getCurrentUser] Cookie check - userId:', userId ? 'exists' : 'missing', 'session:', session ? 'exists' : 'missing');
 
-    const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
-    // console.log(`[getCurrentUser] Auth check took ${Date.now() - _authStart}ms`);
+        if (!userId || !session) {
+            console.log('[getCurrentUser] Not authenticated - returning null');
+            return { user: null, error: 'Not authenticated' };
+        }
 
-    if (authError || !authUser) {
-        console.log('[getCurrentUser] No authenticated user found');
-        return { user: null, error: authError?.message || 'Not authenticated' };
-    }
+        const result = await db.query.users.findFirst({
+            where: eq(users.id, userId),
+            with: {
+                zone: true,
+                branch: true,
+            },
+        });
 
-    // console.log('[getCurrentUser] Auth user found:', authUser.id, authUser.email);
+        if (!result) return { user: null, error: 'User not found' };
 
-    // Use service client to fetch user profile (bypasses RLS)
-    const serviceClient = createServiceClient();
-    const _dbStart = Date.now();
-
-    const { data: userData, error: userError } = await serviceClient
-        .from('users')
-        .select(`
-            *,
-            zones:zone_id(id, name, code),
-            branches:branch_id(id, name)
-        `)
-        .eq('id', authUser.id)
-        .single();
-
-    // console.log(`[getCurrentUser] DB fetch took ${Date.now() - dbStart}ms`);
-
-    if (userError) {
-        console.error('[getCurrentUser] Error fetching user profile:', userError);
-        // Return basic user data from auth if profile fetch fails
         return {
             user: {
-                id: authUser.id,
-                email: authUser.email || '',
-                name: authUser.email?.split('@')[0] || 'User',
-                first_name: '',
-                last_name: '',
-                role: 'Admin',
-                zone_id: '',
-                branch_id: '',
-                zone_name: 'Default Zone',
-                branch_name: 'Default Branch',
-                registered_modules: [],
-                created_at: new Date().toISOString(),
+                ...result,
+                name: result.lastName
+                    ? `${result.firstName} ${result.lastName}`
+                    : result.firstName,
+                first_name: result.firstName,
+                last_name: result.lastName,
+                zone_id: result.zoneId,
+                branch_id: result.branchId,
+                zone_name: result.zone?.name || 'N/A',
+                branch_name: result.branch?.name || 'N/A',
+                registered_modules: result.registeredModules,
+                created_at: result.createdAt,
             },
-            error: null
+            error: null,
         };
+    } catch (err) {
+        console.error('[getCurrentUser] Error:', err);
+        return { user: null, error: 'Failed to fetch user' };
     }
-
-    // console.log(`[getCurrentUser] Total time: ${Date.now() - startTime}ms`);
-    // console.log('[getCurrentUser] User profile fetched:', userData?.name, userData?.role);
-
-    return {
-        user: {
-            ...userData,
-            zone_name: userData?.zones?.name || 'N/A',
-            branch_name: userData?.branches?.name || 'N/A',
-        },
-        error: null
-    };
 }
 
-/**
- * Get all users with zone and branch info
- */
+/** Get all users with zone and branch info */
 export async function getUsers() {
-    const supabase = createServiceClient();
+    try {
+        const data = await db.query.users.findMany({
+            orderBy: desc(users.createdAt),
+            with: { zone: true, branch: true },
+        });
 
-    const { data, error } = await supabase
-        .from('users')
-        .select(`
-            *,
-            zones:zone_id(id, name, code),
-            branches:branch_id(id, name)
-        `)
-        .order('created_at', { ascending: false });
+        const result = data.map(u => ({
+            ...u,
+            name: u.lastName ? `${u.firstName} ${u.lastName}` : u.firstName,
+            first_name: u.firstName,
+            last_name: u.lastName,
+            zone_id: u.zoneId,
+            branch_id: u.branchId,
+            zone_name: u.zone?.name || 'N/A',
+            branch_name: u.branch?.name || 'N/A',
+            registered_modules: u.registeredModules,
+            created_at: u.createdAt,
+        }));
 
-    if (error) {
-        console.error('Error fetching users:', error);
-        return { users: [], error: error.message };
+        return { users: result, error: null };
+    } catch (err) {
+        console.error('Error fetching users:', err);
+        return { users: [], error: 'Failed to fetch users' };
     }
-
-    // Transform data to include zone/branch names
-    const users = data?.map(user => ({
-        ...user,
-        zone_name: user.zones?.name || 'N/A',
-        branch_name: user.branches?.name || 'N/A',
-    })) || [];
-
-    return { users, error: null };
 }
 
-/**
- * Create a new user
- */
+/** Create a new user */
 export async function createUser(input: CreateUserInput) {
-    const supabase = createServiceClient();
+    try {
+        // Store password as plain text (upgrade to bcrypt in production)
+        const passwordHash = input.password;
 
-    // First, create the auth user
-    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-        email: input.email,
-        password: input.password,
-        email_confirm: true,
-    });
+        const [user] = await db
+            .insert(users)
+            .values({
+                email: input.email.toLowerCase().trim(),
+                firstName: input.firstName,
+                lastName: input.lastName,
+                role: input.role,
+                zoneId: input.zoneId,
+                branchId: input.branchId,
+                registeredModules: input.registeredModules,
+                passwordHash,
+            })
+            .returning();
 
-    if (authError) {
-        console.error('Error creating auth user:', authError);
-        return { user: null, error: authError.message };
+        return { user, error: null };
+    } catch (err: unknown) {
+        console.error('Error creating user:', err);
+        const msg = err instanceof Error ? err.message : 'Failed to create user';
+        if (msg.includes('unique')) return { user: null, error: 'Email already exists' };
+        return { user: null, error: msg };
     }
-
-    if (!authData.user) {
-        return { user: null, error: 'Failed to create auth user' };
-    }
-
-    // Then, create the user profile
-    const { data: userData, error: userError } = await supabase
-        .from('users')
-        .insert({
-            id: authData.user.id,
-            email: input.email,
-            first_name: input.firstName,
-            last_name: input.lastName,
-            role: input.role,
-            zone_id: input.zoneId || null,
-            branch_id: input.branchId || null,
-            registered_modules: input.registeredModules,
-            plain_password: input.password,
-        })
-        .select()
-        .single();
-
-    if (userError) {
-        console.error('Error creating user profile:', userError);
-        // Try to delete the auth user if profile creation fails
-        await supabase.auth.admin.deleteUser(authData.user.id);
-        return { user: null, error: userError.message };
-    }
-
-    return { user: userData, error: null };
 }
 
-/**
- * Update user profile
- */
+/** Update user profile */
 export async function updateUser(userId: string, input: UpdateUserInput) {
-    const supabase = createServiceClient();
+    try {
+        const updateData: Partial<typeof users.$inferInsert> & { updatedAt?: Date } = {
+            updatedAt: new Date(),
+        };
 
-    const updateData: Record<string, unknown> = {
-        updated_at: new Date().toISOString(),
-    };
+        if (input.firstName !== undefined) updateData.firstName = input.firstName;
+        if (input.lastName !== undefined) updateData.lastName = input.lastName;
+        if (input.role !== undefined) updateData.role = input.role;
+        if (input.zoneId !== undefined) updateData.zoneId = input.zoneId;
+        if (input.branchId !== undefined) updateData.branchId = input.branchId;
 
-    if (input.firstName !== undefined) updateData.first_name = input.firstName;
-    if (input.lastName !== undefined) updateData.last_name = input.lastName;
-    if (input.name !== undefined) updateData.name = input.name;
-    if (input.role !== undefined) updateData.role = input.role;
-    if (input.zoneId !== undefined) updateData.zone_id = input.zoneId;
-    if (input.branchId !== undefined) updateData.branch_id = input.branchId;
+        const [user] = await db
+            .update(users)
+            .set(updateData)
+            .where(eq(users.id, userId))
+            .returning();
 
-    const { data, error } = await supabase
-        .from('users')
-        .update(updateData)
-        .eq('id', userId)
-        .select()
-        .single();
-
-    if (error) {
-        console.error('Error updating user:', error);
-        return { user: null, error: error.message };
+        return { user, error: null };
+    } catch (err) {
+        console.error('Error updating user:', err);
+        return { user: null, error: 'Failed to update user' };
     }
-
-    return { user: data, error: null };
 }
 
-/**
- * Update user's assigned modules
- */
+/** Update user's assigned modules */
 export async function updateUserModules(userId: string, modules: string[]) {
-    const supabase = createServiceClient();
+    try {
+        const [user] = await db
+            .update(users)
+            .set({ registeredModules: modules, updatedAt: new Date() })
+            .where(eq(users.id, userId))
+            .returning();
 
-    const { data, error } = await supabase
-        .from('users')
-        .update({
-            registered_modules: modules,
-            updated_at: new Date().toISOString(),
-        })
-        .eq('id', userId)
-        .select()
-        .single();
-
-    if (error) {
-        console.error('Error updating user modules:', error);
-        return { user: null, error: error.message };
+        return { user, error: null };
+    } catch (err) {
+        console.error('Error updating user modules:', err);
+        return { user: null, error: 'Failed to update modules' };
     }
-
-    return { user: data, error: null };
 }
 
-/**
- * Delete users
- */
+/** Delete users */
 export async function deleteUsers(userIds: string[]) {
-    const supabase = createServiceClient();
-
-    // Delete from users table first
-    const { error: dbError } = await supabase
-        .from('users')
-        .delete()
-        .in('id', userIds);
-
-    if (dbError) {
-        console.error('Error deleting users from database:', dbError);
-        return { success: false, error: dbError.message };
+    try {
+        await db.delete(users).where(inArray(users.id, userIds));
+        return { success: true, error: null };
+    } catch (err) {
+        console.error('Error deleting users:', err);
+        return { success: false, error: 'Failed to delete users' };
     }
-
-    // Delete from auth
-    for (const userId of userIds) {
-        const { error: authError } = await supabase.auth.admin.deleteUser(userId);
-        if (authError) {
-            console.error(`Error deleting auth user ${userId}:`, authError);
-        }
-    }
-
-    return { success: true, error: null };
 }
 
-/**
- * Reset user password
- */
+/** Reset user password */
 export async function resetUserPassword(userId: string) {
-    const supabase = createServiceClient();
+    try {
+        const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        const newPassword = Array.from(
+            { length: 8 },
+            () => charset[Math.floor(Math.random() * charset.length)]
+        ).join('');
 
-    // Generate new random password
-    const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    let newPassword = '';
-    for (let i = 0; i < 8; i++) {
-        newPassword += charset.charAt(Math.floor(Math.random() * charset.length));
+        await db
+            .update(users)
+            .set({ passwordHash: newPassword, updatedAt: new Date() })
+            .where(eq(users.id, userId));
+
+        return { password: newPassword, error: null };
+    } catch (err) {
+        console.error('Error resetting password:', err);
+        return { password: null, error: 'Failed to reset password' };
     }
-
-    // Update auth user password
-    const { error: authError } = await supabase.auth.admin.updateUserById(userId, {
-        password: newPassword,
-    });
-
-    if (authError) {
-        console.error('Error resetting password:', authError);
-        return { password: null, error: authError.message };
-    }
-
-    // Update plain_password in users table for admin reference
-    await supabase
-        .from('users')
-        .update({ plain_password: newPassword, updated_at: new Date().toISOString() })
-        .eq('id', userId);
-
-    return { password: newPassword, error: null };
 }
