@@ -1,3 +1,8 @@
+# -------------------------------------------------------
+# ecs.tf — ECS Cluster, Task Definition & Service
+# -------------------------------------------------------
+
+# ── ECS Cluster ─────────────────────────────────────────
 resource "aws_ecs_cluster" "app" {
   name = var.app_name
 
@@ -23,6 +28,7 @@ resource "aws_ecs_cluster_capacity_providers" "app" {
   }
 }
 
+# ── CloudWatch Logs ─────────────────────────────────────
 resource "aws_cloudwatch_log_group" "app" {
   name              = "/ecs/${var.app_name}"
   retention_in_days = 7
@@ -32,6 +38,7 @@ resource "aws_cloudwatch_log_group" "app" {
   }
 }
 
+# ── IAM Role for ECS ────────────────────────────────────
 resource "aws_iam_role" "ecs_task_execution_role" {
   name = "${var.app_name}-ecs-task-execution-role"
 
@@ -54,12 +61,14 @@ resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_policy" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
+# ── Task Definition ─────────────────────────────────────
 resource "aws_ecs_task_definition" "app" {
-  family                   = "omer-internship-project"
+  depends_on               = [null_resource.docker_build_and_push]
+  family                   = "${var.app_name}-task"
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
-  cpu                      = "1024"
-  memory                   = "2048"
+  cpu                      = var.task_cpu
+  memory                   = var.task_memory
   execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
 
   container_definitions = jsonencode([
@@ -83,7 +92,7 @@ resource "aws_ecs_task_definition" "app" {
         },
         {
           name  = "DATABASE_URL"
-          value = "postgresql://${var.rds_user}:${var.rds_password}@${var.rds_host}:${var.rds_port}/${var.rds_database}?sslmode=require"
+          value = "postgresql://${var.rds_username}:${aws_secretsmanager_secret_version.rds_password.secret_string}@${aws_db_instance.main.endpoint}/${var.rds_database}?sslmode=require"
         }
       ]
 
@@ -99,15 +108,16 @@ resource "aws_ecs_task_definition" "app" {
   ])
 
   tags = {
-    Name = "omer-internship-project-task"
+    Name = "${var.app_name}-task"
   }
 }
 
+# ── ECS Service ─────────────────────────────────────────
 resource "aws_ecs_service" "app" {
-  name            = "omer-internship-project-service"
+  name            = "${var.app_name}-service"
   cluster         = aws_ecs_cluster.app.id
   task_definition = aws_ecs_task_definition.app.arn
-  desired_count   = 2
+  desired_count   = var.desired_count
 
   capacity_provider_strategy {
     capacity_provider = "FARGATE"
@@ -121,7 +131,7 @@ resource "aws_ecs_service" "app" {
   }
 
   network_configuration {
-    subnets         = var.private_subnets
+    subnets         = [aws_subnet.private_1.id, aws_subnet.private_2.id]
     security_groups = [aws_security_group.ecs.id]
   }
 
@@ -131,9 +141,9 @@ resource "aws_ecs_service" "app" {
     container_port   = var.app_port
   }
 
-  depends_on = [aws_lb_listener.https]
+  depends_on = [aws_lb_listener.http]
 
   tags = {
-    Name = "omer-internship-project-service"
+    Name = "${var.app_name}-service"
   }
 }
