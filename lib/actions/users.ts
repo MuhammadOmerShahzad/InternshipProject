@@ -5,6 +5,17 @@ import { users, zones, branches } from '@/lib/db/schema';
 import { eq, desc, inArray } from 'drizzle-orm';
 import { cookies } from 'next/headers';
 import crypto from 'crypto';
+import {
+    CognitoIdentityProviderClient,
+    AdminCreateUserCommand,
+    AdminDeleteUserCommand,
+    AdminSetUserPasswordCommand
+} from '@aws-sdk/client-cognito-identity-provider';
+
+const cognitoClient = new CognitoIdentityProviderClient({
+    region: process.env.NEXT_PUBLIC_COGNITO_REGION,
+});
+const userPoolId = process.env.NEXT_PUBLIC_COGNITO_USER_POOL_ID;
 
 export interface User {
     id: string;
@@ -122,11 +133,34 @@ export async function createUser(input: CreateUserInput) {
     try {
         // Store password as plain text (upgrade to bcrypt in production)
         const passwordHash = input.password;
+        
+        if (!userPoolId) throw new Error('Cognito User Pool ID is not configured.');
+
+        const email = input.email.toLowerCase().trim();
+
+        // 1. Create in Cognito
+        await cognitoClient.send(new AdminCreateUserCommand({
+            UserPoolId: userPoolId,
+            Username: email,
+            UserAttributes: [
+                { Name: 'email', Value: email },
+                { Name: 'email_verified', Value: 'true' }
+            ],
+            MessageAction: 'SUPPRESS' // Do not send email
+        }));
+
+        // 2. Set permanent password
+        await cognitoClient.send(new AdminSetUserPasswordCommand({
+            UserPoolId: userPoolId,
+            Username: email,
+            Password: input.password,
+            Permanent: true
+        }));
 
         const [user] = await db
             .insert(users)
             .values({
-                email: input.email.toLowerCase().trim(),
+                email,
                 firstName: input.firstName,
                 lastName: input.lastName,
                 role: input.role,
@@ -191,6 +225,25 @@ export async function updateUserModules(userId: string, modules: string[]) {
 /** Delete users */
 export async function deleteUsers(userIds: string[]) {
     try {
+        if (!userPoolId) throw new Error('Cognito User Pool ID is not configured.');
+
+        // Get emails for Cognito deletion
+        const usersToDelete = await db
+            .select({ email: users.email })
+            .from(users)
+            .where(inArray(users.id, userIds));
+            
+        for (const user of usersToDelete) {
+            try {
+                await cognitoClient.send(new AdminDeleteUserCommand({
+                    UserPoolId: userPoolId,
+                    Username: user.email,
+                }));
+            } catch (cognitoErr) {
+                console.error(`Failed to delete user ${user.email} from Cognito:`, cognitoErr);
+            }
+        }
+
         await db.delete(users).where(inArray(users.id, userIds));
         return { success: true, error: null };
     } catch (err) {
@@ -202,11 +255,31 @@ export async function deleteUsers(userIds: string[]) {
 /** Reset user password */
 export async function resetUserPassword(userId: string) {
     try {
+        if (!userPoolId) throw new Error('Cognito User Pool ID is not configured.');
+
         const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
         const newPassword = Array.from(
             { length: 8 },
             () => charset[Math.floor(Math.random() * charset.length)]
         ).join('');
+
+        const [userToReset] = await db
+            .select({ email: users.email })
+            .from(users)
+            .where(eq(users.id, userId))
+            .limit(1);
+
+        if (!userToReset) {
+            return { password: null, error: 'User not found' };
+        }
+
+        // Set new password in Cognito
+        await cognitoClient.send(new AdminSetUserPasswordCommand({
+            UserPoolId: userPoolId,
+            Username: userToReset.email,
+            Password: newPassword,
+            Permanent: true
+        }));
 
         await db
             .update(users)

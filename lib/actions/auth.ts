@@ -5,7 +5,11 @@ import { users } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
-import { randomBytes } from 'crypto'
+import {
+    CognitoIdentityProviderClient,
+    InitiateAuthCommand,
+    RespondToAuthChallengeCommand,
+} from '@aws-sdk/client-cognito-identity-provider'
 
 export interface LoginResult {
     success: boolean
@@ -13,38 +17,67 @@ export interface LoginResult {
     userId?: string
 }
 
-// Simple password check — compares plain text (upgrade to bcrypt when ready)
-function checkPassword(plain: string, stored: string | null): boolean {
-    if (!stored) return false
-    // If stored as bcrypt hash, use bcrypt.compare here
-    // For now: plain text comparison (replace with bcrypt in production)
-    return plain === stored
-}
+// Initialize Cognito Client
+const cognitoClient = new CognitoIdentityProviderClient({
+    region: process.env.NEXT_PUBLIC_COGNITO_REGION,
+})
+
+const clientId = process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID
 
 export async function login(email: string, password: string): Promise<LoginResult> {
     try {
         console.log('[AUTH] Login attempt for email:', email);
+        
+        if (!clientId) {
+            throw new Error('Cognito Client ID is not configured.');
+        }
+
+        const command = new InitiateAuthCommand({
+            AuthFlow: 'USER_PASSWORD_AUTH',
+            ClientId: clientId,
+            AuthParameters: {
+                USERNAME: email,
+                PASSWORD: password,
+            },
+        });
+
+        let response = await cognitoClient.send(command);
+        console.log('[AUTH] Cognito response:', JSON.stringify(response, null, 2));
+
+        if (response.ChallengeName === 'NEW_PASSWORD_REQUIRED') {
+            console.log('[AUTH] Automatically handling NEW_PASSWORD_REQUIRED challenge...');
+            const challengeCommand = new RespondToAuthChallengeCommand({
+                ChallengeName: 'NEW_PASSWORD_REQUIRED',
+                ClientId: clientId,
+                ChallengeResponses: {
+                    USERNAME: email,
+                    NEW_PASSWORD: password, // setting it to the exact same password they typed
+                },
+                Session: response.Session,
+            });
+            response = await cognitoClient.send(challengeCommand);
+            console.log('[AUTH] Challenge completed:', JSON.stringify(response, null, 2));
+        } else if (response.ChallengeName) {
+            console.error(`[AUTH] Cognito requires challenge: ${response.ChallengeName}`);
+            throw new Error(`Cognito requires you to complete a challenge: ${response.ChallengeName}`);
+        }
+
+        const sessionToken = response.AuthenticationResult?.IdToken;
+        if (!sessionToken) {
+            throw new Error('No IdToken returned from Cognito. See terminal logs for the full response.');
+        }
+
+        // Now lookup the user in the database by email
         const [user] = await db
             .select()
             .from(users)
             .where(eq(users.email, email.toLowerCase().trim()))
             .limit(1)
 
-        console.log('[AUTH] Query result:', user ? 'User found' : 'User not found');
         if (!user) {
-            return { success: false, error: 'Invalid email or password' }
+            console.warn('[AUTH] User authenticated with Cognito but not found in local DB:', email);
+            return { success: false, error: 'User profile not found in system' }
         }
-
-        console.log('[AUTH] Password hash from DB:', user.passwordHash ? 'exists' : 'missing');
-        const valid = checkPassword(password, user.passwordHash)
-        console.log('[AUTH] Password check result:', valid);
-        if (!valid) {
-            return { success: false, error: 'Invalid email or password' }
-        }
-
-        // Create a simple session token
-        const sessionToken = randomBytes(32).toString('hex')
-        console.log('[AUTH] Session token created');
 
         // Store session in cookie
         const cookieStore = await cookies()
@@ -63,12 +96,14 @@ export async function login(email: string, password: string): Promise<LoginResul
         })
 
         console.log('[AUTH] Cookies set - session and userId');
-
         console.log('[AUTH] Login successful for user:', user.id);
+        
         return { success: true, userId: user.id }
-    } catch (err) {
+    } catch (err: any) {
         console.error('Login error:', err)
-        const message = err instanceof Error ? err.message : String(err)
+        const message = err.name === 'NotAuthorizedException' 
+            ? 'Invalid email or password' 
+            : err.message || String(err)
         return { success: false, error: `Login failed: ${message}` }
     }
 }
